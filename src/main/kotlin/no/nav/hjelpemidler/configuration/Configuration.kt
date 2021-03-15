@@ -27,6 +27,9 @@ internal object Configuration {
             "HM_INFOTRYGD_PROXY_DB_URL" to "abc",
             "HM_INFOTRYGD_PROXY_DB_USR" to "abc",
             "HM_INFOTRYGD_PROXY_DB_PW" to "abc",
+
+            "AZURE_APP_WELL_KNOWN_URL" to "abc",
+            "AZURE_APP_CLIENT_ID" to "abc",
         )
     )
 
@@ -34,6 +37,11 @@ internal object Configuration {
         "HM_INFOTRYGD_PROXY_DB_URL" to config()[Key("HM_INFOTRYGD_PROXY_DB_URL", stringType)],
         "HM_INFOTRYGD_PROXY_DB_USR" to config()[Key("HM_INFOTRYGD_PROXY_DB_USR", stringType)],
         "HM_INFOTRYGD_PROXY_DB_PW" to config()[Key("HM_INFOTRYGD_PROXY_DB_PW", stringType)],
+    )
+
+    val azureAD: Map<String, String> = mapOf(
+        "AZURE_APP_WELL_KNOWN_URL" to config()[Key("AZURE_APP_WELL_KNOWN_URL", stringType)],
+        "AZURE_APP_CLIENT_ID" to config()[Key("AZURE_APP_CLIENT_ID", stringType)],
     )
 
 }

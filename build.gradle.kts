@@ -3,13 +3,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.4.21"
 }
-val rapid_version: String by project
 val logging_version: String by project
 val konfig_version: String by project
-val kafka_version: String by project
-val influxdb_version: String by project
 val klaxon_version: String by project
 val ojdbc_version: String by project
+val ktor_version: String by project
 
 group = "no.nav.hjelpemidler"
 version = "1.0-SNAPSHOT"
@@ -22,13 +20,20 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:$rapid_version")
     implementation("io.github.microutils:kotlin-logging:$logging_version")
     implementation("com.natpryce:konfig:$konfig_version")
-    implementation("org.apache.kafka:kafka-clients:$kafka_version")
-    implementation("org.influxdb:influxdb-java:$influxdb_version")
     implementation("com.beust:klaxon:$klaxon_version")
     implementation("com.oracle.database.jdbc:ojdbc8:$ojdbc_version")
+    implementation("io.ktor:ktor-server-netty:$ktor_version")
+    implementation("io.ktor:ktor-client-core:$ktor_version")
+    implementation("io.ktor:ktor-client-core-jvm:$ktor_version")
+    implementation("io.ktor:ktor-client-auth-jvm:$ktor_version")
+    implementation("io.ktor:ktor-client-apache:$ktor_version")
+    implementation("io.ktor:ktor-client-jackson:$ktor_version")
+    implementation("io.ktor:ktor-server-core:$ktor_version")
+    implementation("io.ktor:ktor-auth:$ktor_version")
+    implementation("io.ktor:ktor-auth-jwt:$ktor_version")
+    implementation("io.ktor:ktor-jackson:$ktor_version")
 }
 
 tasks.withType<KotlinCompile>() {

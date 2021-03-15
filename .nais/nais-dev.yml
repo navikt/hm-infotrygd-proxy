@@ -16,3 +16,15 @@ spec:
         mountPath: /secrets/infotrygd_hj/credentials
       - kvPath: oracle/data/dev/config/infotrygd_hjq
         mountPath: /secrets/infotrygd_hj/config
+  ingresses:
+    - https://hm-infotrygd-proxy.dev.adeo.no
+  azure:
+    application:
+      enabled: true
+  webproxy: true
+  accessPolicy:
+    inbound:
+      rules:
+        - application: hm-infotrygd-poller
+          namespace: teamdigihot
+          cluster: dev-gcp

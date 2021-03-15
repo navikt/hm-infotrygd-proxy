@@ -1,18 +1,34 @@
 package no.nav.hjelpemidler
 
+import io.ktor.application.*
+import io.ktor.auth.*
+import io.ktor.routing.*
+import io.ktor.auth.jwt.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.features.*
+import io.ktor.http.*
+import io.ktor.jackson.*
+import io.ktor.request.*
+import io.ktor.response.*
+import io.ktor.server.netty.*
+import io.ktor.util.*
+import java.util.*
 import mu.KotlinLogging
 import no.nav.hjelpemidler.configuration.Configuration
 import oracle.jdbc.OracleConnection
 import oracle.jdbc.pool.OracleDataSource
+import org.json.simple.JSONObject
+import org.slf4j.event.Level
+import java.sql.Connection
 import java.sql.PreparedStatement
-import java.util.Properties
 
 private val logg = KotlinLogging.logger {}
 // private val sikkerlogg = KotlinLogging.logger("tjenestekall")
 
-private var prStmtDecisionResult: PreparedStatement? = null
+private var dbConnection: Connection? = null
 
-fun main() {
+fun main(args: Array<String>) {
     logg.info("Hello world")
 
     // Set up database connection
@@ -26,42 +42,84 @@ fun main() {
     ods.connectionProperties = info
 
     logg.info("Connecting to database")
-    val connection = ods.getConnection()
+    dbConnection = ods.getConnection()
 
     logg.info("Fetching db metadata")
-    val dbmd = connection.metaData
+    val dbmd = dbConnection!!.metaData
     logg.info("Driver Name: " + dbmd.driverName)
     logg.info("Driver Version: " + dbmd.driverVersion)
 
-    prStmtDecisionResult = connection.prepareStatement("SELECT S10_RESULTAT as resultat FROM INFOTRYGD_HJQ.SA_SAK_10 WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?")
-
+    // Test query
+    logg.info("Test query:")
     val testFakeTkNr = "2103"
     val testFakeFNR = "07010589518"
     val testFakeSaksBlokk = "A"
     val testFakeSaksNr = "04"
-
     val result = queryForDecisionResult(testFakeTkNr, testFakeFNR, testFakeSaksBlokk, testFakeSaksNr)
     logg.info("Result was: \"$result\" (should be \"IM\")")
 
-    prStmtDecisionResult!!.close()
+    // Serve http REST API requests
+    EngineMain.main(args)
 
-    logg.info("Processing done, sleeping forever.")
-    Thread.sleep(1000*60*60*24)
+    // Cleanup
+    logg.info("Cleaning up and stopping.")
+    dbConnection!!.close()
 }
 
-fun queryForDecisionResult(tkNr: String, fnr: String, saksblokk: String, saksnr: String): String {
-    val stmt = prStmtDecisionResult!!
+@KtorExperimentalAPI
+@Suppress("unused") // Referenced in application.conf
+@kotlin.jvm.JvmOverloads
+fun Application.module(testing: Boolean = false) {
+    installAuthentication()
 
-    stmt.clearParameters()
-    stmt.setString(1, "$tkNr$fnr") // S01_PERSONKEY
-    stmt.setString(2, saksblokk) // S05_SAKSBLOKK
-    stmt.setString(3, saksnr) // S10_SAKSNR
-
-    stmt.executeQuery().use { rs ->
-        while (rs.next()) {
-            return rs.getString("resultat")
-        }
+    install(ContentNegotiation) {
+        register(ContentType.Application.Json, JacksonConverter())
     }
 
+    install(CallLogging) {
+        level = Level.TRACE
+        filter { call -> !call.request.path().startsWith("/internal") }
+    }
+
+    routing {
+        authenticate("aad") {
+            get("/result") {
+                val req = call.receive<JSONObject>()
+                try {
+                    val tknr = req.get("tknr").toString()
+                    val fnr = req.get("fnr").toString()
+                    val saksblokk = req.get("saksblokk").toString()
+                    val saksnr = req.get("saksnr").toString()
+
+                    logg.info("Incoming authenticated request with tknr=$tknr fnr=$fnr saksblokk=$saksblokk saksnr=$saksnr")
+
+                    // Proccess request
+                    val res = queryForDecisionResult(tknr, fnr, saksblokk, saksnr)
+                    call.respond(HttpStatusCode.OK,"{\"result\": \"${res}\"}")
+
+                }catch(e: Exception) {
+                    call.respond(HttpStatusCode.BadRequest, "bad request")
+                    return@get
+                }
+            }
+        }
+    }
+}
+
+fun getPreparedStatementDecisionResult(): PreparedStatement {
+    return dbConnection!!.prepareStatement("SELECT S10_RESULTAT as resultat FROM INFOTRYGD_HJQ.SA_SAK_10 WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?")
+}
+
+fun queryForDecisionResult(tknr: String, fnr: String, saksblokk: String, saksnr: String): String {
+    getPreparedStatementDecisionResult().use {pstmt ->
+        pstmt.setString(1, "$tknr$fnr") // S01_PERSONKEY
+        pstmt.setString(2, saksblokk) // S05_SAKSBLOKK
+        pstmt.setString(3, saksnr) // S10_SAKSNR
+        pstmt.executeQuery().use { rs ->
+            while (rs.next()) {
+                return rs.getString("resultat")
+            }
+        }
+    }
     throw Exception("no such db row")
 }
