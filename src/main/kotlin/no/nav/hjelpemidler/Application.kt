@@ -12,15 +12,14 @@ private val logg = KotlinLogging.logger {}
 fun main() {
     logg.info("Hello world")
 
-    /*
     // Set up database connection
     val info = Properties()
-    info[OracleConnection.CONNECTION_PROPERTY_USER_NAME] = Configuration.oracleDatabaseConfig["HM_INFOTRYGDPROXY_SRVUSER"]!!
-    info[OracleConnection.CONNECTION_PROPERTY_PASSWORD] = Configuration.oracleDatabaseConfig["HM_INFOTRYGDPROXY_SRVPWD"]!!
+    info[OracleConnection.CONNECTION_PROPERTY_USER_NAME] = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]!!
+    info[OracleConnection.CONNECTION_PROPERTY_PASSWORD] = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_PW"]!!
     info[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
 
     val ods = OracleDataSource()
-    ods.url = Configuration.oracleDatabaseConfig["DATABASE_URL"]!!
+    ods.url = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_URL"]!!
     ods.connectionProperties = info
 
     try {
@@ -56,7 +55,6 @@ fun main() {
         println("Exception: " + e.message.toString())
         e.printStackTrace()
     }
-     */
 
     logg.info("Processing done, sleeping forever.")
     Thread.sleep(1000*60*60*24)

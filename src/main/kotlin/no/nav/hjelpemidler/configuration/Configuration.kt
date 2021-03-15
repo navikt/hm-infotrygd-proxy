@@ -24,15 +24,16 @@ internal object Configuration {
 
     private val localProperties = ConfigurationMap(
         mapOf(
-            "HM_INFOTRYGDPROXY_SRVUSER" to "abc",
-            "HM_INFOTRYGDPROXY_SRVPWD" to "abc",
+            "HM_INFOTRYGD_PROXY_DB_URL" to "abc",
+            "HM_INFOTRYGD_PROXY_DB_USR" to "abc",
+            "HM_INFOTRYGD_PROXY_DB_PW" to "abc",
         )
     )
 
     val oracleDatabaseConfig: Map<String, String> = mapOf(
-        //"HM_INFOTRYGDPROXY_SRVUSER" to config()[Key("HM_INFOTRYGDPROXY_SRVUSER", stringType)],
-        //"HM_INFOTRYGDPROXY_SRVPWD" to config()[Key("HM_INFOTRYGDPROXY_SRVPWD", stringType)],
-        //"DATABASE_URL" to "jdbc:oracle:thin:@a01dbfl033.adeo.no:1521/infotrygd_hjq",
+        "HM_INFOTRYGD_PROXY_DB_URL" to config()[Key("HM_INFOTRYGD_PROXY_DB_URL", stringType)],
+        "HM_INFOTRYGD_PROXY_DB_USR" to config()[Key("HM_INFOTRYGD_PROXY_DB_USR", stringType)],
+        "HM_INFOTRYGD_PROXY_DB_PW" to config()[Key("HM_INFOTRYGD_PROXY_DB_PW", stringType)],
     )
 
 }
