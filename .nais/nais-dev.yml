@@ -1,0 +1,22 @@
+apiVersion: "nais.io/v1alpha1"
+kind: "Application"
+metadata:
+  name: hm-infotrygd-proxy
+  namespace: teamdigihot
+  labels:
+    team: teamdigihot
+spec:
+  image: {{image}}
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 3000Mi
+    requests:
+      cpu: 500m
+      memory: 600Mi
+  secureLogs:
+    enabled: true
+  accessPolicy:
+    outbound:
+      external:
+        - host: a01dbfl033.adeo.no
