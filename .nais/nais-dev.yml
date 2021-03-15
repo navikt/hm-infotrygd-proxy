@@ -12,9 +12,7 @@ spec:
   vault:
     enabled: true
     paths:
-      - kvPath: /oracle/data/dev/config/infotrygd_hjq-user/jdbc_url
-        mountPath: /oracle/infotrygd_hj/jdbc_url
-      - kvPath: /oracle/data/dev/creds/infotrygd_hjq-user/username
-        mountPath: /oracle/infotrygd_hj/username
-      - kvPath: /oracle/data/dev/creds/infotrygd_hjq-user/password
-        mountPath: /oracle/infotrygd_hj/password
+      - kvPath: oracle/data/dev/creds/infotrygd_hjq-user
+        mountPath: /secrets/infotrygd_hj/credentials
+      - kvPath: oracle/data/dev/config/infotrygd_hjq
+        mountPath: /secrets/infotrygd_hj/config
