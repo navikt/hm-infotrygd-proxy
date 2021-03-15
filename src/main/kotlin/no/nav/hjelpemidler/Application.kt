@@ -103,6 +103,26 @@ fun Application.module(testing: Boolean = false) {
                 }
             }
         }
+
+        get("/result_insecure_test") {
+            val req = call.receive<JSONObject>()
+            try {
+                val tknr = req.get("tknr").toString()
+                val fnr = req.get("fnr").toString()
+                val saksblokk = req.get("saksblokk").toString()
+                val saksnr = req.get("saksnr").toString()
+
+                logg.info("Incoming authenticated request with tknr=$tknr fnr=$fnr saksblokk=$saksblokk saksnr=$saksnr")
+
+                // Proccess request
+                val res = queryForDecisionResult(tknr, fnr, saksblokk, saksnr)
+                call.respondText("{\"result\": \"${res}\"}", ContentType.Application.Json, HttpStatusCode.OK)
+
+            }catch(e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, "bad request")
+                return@get
+            }
+        }
     }
 }
 
