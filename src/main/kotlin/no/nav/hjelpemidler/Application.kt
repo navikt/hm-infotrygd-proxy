@@ -95,7 +95,7 @@ fun Application.module(testing: Boolean = false) {
 
                     // Proccess request
                     val res = queryForDecisionResult(tknr, fnr, saksblokk, saksnr)
-                    call.respond(HttpStatusCode.OK,"{\"result\": \"${res}\"}")
+                    call.respondText("{\"result\": \"${res}\"}", ContentType.Application.Json, HttpStatusCode.OK)
 
                 }catch(e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, "bad request")
