@@ -12,6 +12,7 @@ private val logg = KotlinLogging.logger {}
 fun main() {
     logg.info("Hello world")
 
+    /*
     // Set up database connection
     val info = Properties()
     info[OracleConnection.CONNECTION_PROPERTY_USER_NAME] = Configuration.oracleDatabaseConfig["HM_INFOTRYGDPROXY_SRVUSER"]!!
@@ -55,6 +56,7 @@ fun main() {
         println("Exception: " + e.message.toString())
         e.printStackTrace()
     }
+     */
 
     logg.info("Processing done, sleeping forever.")
     Thread.sleep(1000*60*60*24)

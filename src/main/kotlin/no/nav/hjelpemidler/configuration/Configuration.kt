@@ -30,9 +30,9 @@ internal object Configuration {
     )
 
     val oracleDatabaseConfig: Map<String, String> = mapOf(
-        "HM_INFOTRYGDPROXY_SRVUSER" to config()[Key("HM_INFOTRYGDPROXY_SRVUSER", stringType)],
-        "HM_INFOTRYGDPROXY_SRVPWD" to config()[Key("HM_INFOTRYGDPROXY_SRVPWD", stringType)],
-        "DATABASE_URL" to "jdbc:oracle:thin:@a01dbfl033.adeo.no:1521/infotrygd_hjq",
+        //"HM_INFOTRYGDPROXY_SRVUSER" to config()[Key("HM_INFOTRYGDPROXY_SRVUSER", stringType)],
+        //"HM_INFOTRYGDPROXY_SRVPWD" to config()[Key("HM_INFOTRYGDPROXY_SRVPWD", stringType)],
+        //"DATABASE_URL" to "jdbc:oracle:thin:@a01dbfl033.adeo.no:1521/infotrygd_hjq",
     )
 
 }

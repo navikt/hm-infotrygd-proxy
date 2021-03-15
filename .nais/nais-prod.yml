@@ -7,13 +7,6 @@ metadata:
     team: teamdigihot
 spec:
   image: {{image}}
-  resources:
-    limits:
-      cpu: 2000m
-      memory: 3000Mi
-    requests:
-      cpu: 500m
-      memory: 600Mi
   secureLogs:
     enabled: true
   accessPolicy:

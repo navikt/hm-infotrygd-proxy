@@ -7,16 +7,14 @@ metadata:
     team: teamdigihot
 spec:
   image: {{image}}
-  resources:
-    limits:
-      cpu: 2000m
-      memory: 3000Mi
-    requests:
-      cpu: 500m
-      memory: 600Mi
   secureLogs:
     enabled: true
-  accessPolicy:
-    outbound:
-      external:
-        - host: a01dbfl033.adeo.no
+  vault:
+    enabled: true
+    paths:
+      - kvPath: /oracle/data/dev/config/infotrygd_hjq-user/jdbc_url
+        mountPath: /oracle/infotrygd_hj/jdbc_url
+      - kvPath: /oracle/data/dev/creds/infotrygd_hjq-user/username
+        mountPath: /oracle/infotrygd_hj/username
+      - kvPath: /oracle/data/dev/creds/infotrygd_hjq-user/password
+        mountPath: /oracle/infotrygd_hj/password
