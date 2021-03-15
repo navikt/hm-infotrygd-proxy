@@ -4,6 +4,7 @@ plugins {
     kotlin("jvm") version "1.4.21"
 }
 val logging_version: String by project
+val logback_version: String by project
 val konfig_version: String by project
 val klaxon_version: String by project
 val ojdbc_version: String by project
@@ -34,6 +35,7 @@ dependencies {
     implementation("io.ktor:ktor-auth:$ktor_version")
     implementation("io.ktor:ktor-auth-jwt:$ktor_version")
     implementation("io.ktor:ktor-jackson:$ktor_version")
+    implementation("ch.qos.logback:logback-classic:$logback_version")
 }
 
 tasks.withType<KotlinCompile>() {
