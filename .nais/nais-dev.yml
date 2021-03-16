@@ -18,8 +18,7 @@ spec:
       - kvPath: oracle/data/dev/config/infotrygd_hjq
         mountPath: /secrets/infotrygd_hj/config
   ingresses:
-    - https://hm-infotrygd-proxy.dev.adeo.no
-    - https://hm-infotrygd-proxy.dev-fss-pub.nais.io
+    - https://hm-infotrygd-proxy.dev.intern.nav.no
   azure:
     application:
       enabled: true
