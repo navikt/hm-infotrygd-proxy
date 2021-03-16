@@ -83,7 +83,7 @@ fun Application.module(testing: Boolean = false) {
 
     routing {
         authenticate("aad") {
-            get("/result") {
+            post("/result") {
                 val req = call.receive<JSONObject>()
                 try {
                     val tknr = req.get("tknr").toString()
@@ -99,7 +99,7 @@ fun Application.module(testing: Boolean = false) {
 
                 }catch(e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, "bad request")
-                    return@get
+                    return@post
                 }
             }
         }
