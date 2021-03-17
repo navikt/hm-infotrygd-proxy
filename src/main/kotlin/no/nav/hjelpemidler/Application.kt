@@ -81,10 +81,15 @@ fun Application.module(testing: Boolean = false) {
         authenticate("aad") {
             post("/vedtak-resultat") {
                 try {
+
                     val reqs = call.receive<Array<VedtakResultatRequest>>()
-                    logg.info("Incoming authenticated request for /vedtak-resultat (with parameters: $reqs)")
+
+                    logg.info("Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests:")
+                    for (i in 1..reqs.size) logg.info("– [$i/${reqs.size}] ${reqs[i-1]}")
+
                     val res = queryForDecisionResult(reqs)
                     call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
+
                 }catch(e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
                     return@post
