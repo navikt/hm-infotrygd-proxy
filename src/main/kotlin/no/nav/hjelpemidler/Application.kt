@@ -144,6 +144,7 @@ data class VedtakResultatRequest(
 )
 
 data class VedtakResultatResponse (
+    val req: VedtakResultatRequest,
     val result: String?,
     val error: String?,
     val queryTimeElapsedMs: Double,
@@ -172,7 +173,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 }
             }
             if (result == null) error = "no such decision in the database"
-            results.add(VedtakResultatResponse(result, error, elapsed.inMilliseconds))
+            results.add(VedtakResultatResponse(req, result, error, elapsed.inMilliseconds))
         }
     }
     return results.toTypedArray()
