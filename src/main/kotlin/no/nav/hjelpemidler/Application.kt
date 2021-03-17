@@ -109,7 +109,11 @@ fun Application.module(testing: Boolean = false) {
                     val reqs = call.receive<Array<VedtakResultatRequest>>()
 
                     logg.info("Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests:")
-                    for (i in 1..reqs.size) logg.info("– [$i/${reqs.size}] ${reqs[i-1]}")
+                    for (i in 1..reqs.size) {
+                        val req = reqs[i-1]
+                        val reqInner = VedtakResultatRequest(req.tknr, "[MASKED]", req.saksblokk, req.saksnr)
+                        logg.info("– [$i/${reqs.size}] $reqInner")
+                    }
 
                     val res = queryForDecisionResult(reqs)
                     call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
