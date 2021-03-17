@@ -87,7 +87,7 @@ fun Application.module(testing: Boolean = false) {
                     val saksblokk = req.get("saksblokk").toString()
                     val saksnr = req.get("saksnr").toString()
 
-                    logg.info("Incoming authenticated request with tknr=$tknr fnr=$fnr saksblokk=$saksblokk saksnr=$saksnr")
+                    logg.info("Incoming authenticated request for /vedtak-resultat (with parameters: tknr=$tknr fnr=$fnr saksblokk=$saksblokk saksnr=$saksnr)")
 
                     // Proccess request
                     val res = queryForDecisionResult(tknr, fnr, saksblokk, saksnr)
