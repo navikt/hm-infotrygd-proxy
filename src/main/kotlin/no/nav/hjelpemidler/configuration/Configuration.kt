@@ -14,11 +14,13 @@ internal object Configuration {
 
     private val prodProperties = ConfigurationMap(
         mapOf(
+            "HM_INFOTRYGD_PROXY_DB_NAME" to "INFOTRYGD_P",
         )
     )
 
     private val devProperties = ConfigurationMap(
         mapOf(
+            "HM_INFOTRYGD_PROXY_DB_NAME" to "INFOTRYGD_HJQ",
         )
     )
 
@@ -27,6 +29,7 @@ internal object Configuration {
             "HM_INFOTRYGD_PROXY_DB_URL" to "abc",
             "HM_INFOTRYGD_PROXY_DB_USR" to "abc",
             "HM_INFOTRYGD_PROXY_DB_PW" to "abc",
+            "HM_INFOTRYGD_PROXY_DB_NAME" to "abc",
 
             "AZURE_APP_WELL_KNOWN_URL" to "abc",
             "AZURE_APP_CLIENT_ID" to "abc",
@@ -37,6 +40,7 @@ internal object Configuration {
         "HM_INFOTRYGD_PROXY_DB_URL" to config()[Key("HM_INFOTRYGD_PROXY_DB_URL", stringType)],
         "HM_INFOTRYGD_PROXY_DB_USR" to config()[Key("HM_INFOTRYGD_PROXY_DB_USR", stringType)],
         "HM_INFOTRYGD_PROXY_DB_PW" to config()[Key("HM_INFOTRYGD_PROXY_DB_PW", stringType)],
+        "HM_INFOTRYGD_PROXY_DB_NAME" to config()[Key("HM_INFOTRYGD_PROXY_DB_NAME", stringType)],
     )
 
     val azureAD: Map<String, String> = mapOf(

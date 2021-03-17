@@ -1,5 +1,6 @@
 package no.nav.hjelpemidler
 
+import com.beust.klaxon.Klaxon
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.routing.*
@@ -22,6 +23,9 @@ import org.json.simple.JSONObject
 import org.slf4j.event.Level
 import java.sql.Connection
 import java.sql.PreparedStatement
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 private val logg = KotlinLogging.logger {}
 // private val sikkerlogg = KotlinLogging.logger("tjenestekall")
@@ -49,15 +53,6 @@ fun main(args: Array<String>) {
     logg.info("Driver Name: " + dbmd.driverName)
     logg.info("Driver Version: " + dbmd.driverVersion)
 
-    // Test query
-    logg.info("Test query:")
-    val testFakeTkNr = "2103"
-    val testFakeFNR = "07010589518"
-    val testFakeSaksBlokk = "A"
-    val testFakeSaksNr = "04"
-    val result = queryForDecisionResult(testFakeTkNr, testFakeFNR, testFakeSaksBlokk, testFakeSaksNr)
-    logg.info("Result was: \"$result\" (should be \"IM\")")
-
     // Serve http REST API requests
     EngineMain.main(args)
 
@@ -66,6 +61,7 @@ fun main(args: Array<String>) {
     dbConnection!!.close()
 }
 
+@ExperimentalTime
 @KtorExperimentalAPI
 @Suppress("unused") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
@@ -83,7 +79,7 @@ fun Application.module(testing: Boolean = false) {
 
     routing {
         authenticate("aad") {
-            post("/result") {
+            post("/vedtak-resultat") {
                 val req = call.receive<JSONObject>()
                 try {
                     val tknr = req.get("tknr").toString()
@@ -95,10 +91,10 @@ fun Application.module(testing: Boolean = false) {
 
                     // Proccess request
                     val res = queryForDecisionResult(tknr, fnr, saksblokk, saksnr)
-                    call.respondText("{\"result\": \"${res}\"}", ContentType.Application.Json, HttpStatusCode.OK)
+                    call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
 
                 }catch(e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, "bad request")
+                    call.respond(HttpStatusCode.BadRequest, "bad request: $e")
                     return@post
                 }
             }
@@ -107,19 +103,39 @@ fun Application.module(testing: Boolean = false) {
 }
 
 fun getPreparedStatementDecisionResult(): PreparedStatement {
-    return dbConnection!!.prepareStatement("SELECT S10_RESULTAT as resultat FROM INFOTRYGD_HJQ.SA_SAK_10 WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?")
+    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
+    // even if we are connected to the production db: INFOTRYGD_P
+    return dbConnection!!.prepareStatement("""
+        SELECT S10_RESULTAT
+        FROM " + ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]} + ".SA_SAK_10
+        WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
+        AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99'
+    """.trimIndent())
 }
 
-fun queryForDecisionResult(tknr: String, fnr: String, saksblokk: String, saksnr: String): String {
-    getPreparedStatementDecisionResult().use {pstmt ->
-        pstmt.setString(1, "$tknr$fnr") // S01_PERSONKEY
-        pstmt.setString(2, saksblokk) // S05_SAKSBLOKK
-        pstmt.setString(3, saksnr) // S10_SAKSNR
-        pstmt.executeQuery().use { rs ->
-            while (rs.next()) {
-                return rs.getString("resultat")
+data class DecisionResult (
+    val result: String,
+    val queryTimeElapsedMs: Double,
+)
+
+@ExperimentalTime
+fun queryForDecisionResult(tknr: String, fnr: String, saksblokk: String, saksnr: String): DecisionResult {
+    var result: String? = null
+    val elapsed: Duration = measureTime {
+        getPreparedStatementDecisionResult().use { pstmt ->
+            pstmt.setString(1, "$tknr$fnr") // S01_PERSONKEY
+            pstmt.setString(2, saksblokk) // S05_SAKSBLOKK
+            pstmt.setString(3, saksnr) // S10_SAKSNR
+            pstmt.executeQuery().use { rs ->
+                while (rs.next()) {
+                    if (result != null) {
+                        throw Exception("we found multiple results for query, this is not supported") // Multiple results not supported
+                    }
+                    result = rs.getString("S10_RESULTAT")
+                }
             }
         }
     }
-    throw Exception("no such db row")
+    if (result == null) throw Exception("no such decision in the database")
+    return DecisionResult(result!!, elapsed.inMilliseconds)
 }
