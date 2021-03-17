@@ -80,21 +80,13 @@ fun Application.module(testing: Boolean = false) {
     routing {
         authenticate("aad") {
             post("/vedtak-resultat") {
-                val req = call.receive<JSONObject>()
                 try {
-                    val tknr = req.get("tknr").toString()
-                    val fnr = req.get("fnr").toString()
-                    val saksblokk = req.get("saksblokk").toString()
-                    val saksnr = req.get("saksnr").toString()
-
-                    logg.info("Incoming authenticated request for /vedtak-resultat (with parameters: tknr=$tknr fnr=$fnr saksblokk=$saksblokk saksnr=$saksnr)")
-
-                    // Proccess request
-                    val res = queryForDecisionResult(tknr, fnr, saksblokk, saksnr)
+                    val reqs = call.receive<List<VedtakResultatRequest>>()
+                    logg.info("Incoming authenticated request for /vedtak-resultat (with parameters: $reqs)")
+                    val res = queryForDecisionResult(reqs)
                     call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
-
                 }catch(e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, "bad request: $e")
+                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
                     return@post
                 }
             }
@@ -111,33 +103,49 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
         WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
         AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
     """.trimIndent().split("\n").joinToString(" ")
+
     logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
 }
 
-data class DecisionResult (
-    val result: String,
+data class VedtakResultatRequest(
+    val tknr: String,
+    val fnr: String,
+    val saksblokk: String,
+    val saksnr: String,
+)
+
+data class VedtakResultatResponse (
+    val result: String?,
+    val error: String?,
     val queryTimeElapsedMs: Double,
 )
 
 @ExperimentalTime
-fun queryForDecisionResult(tknr: String, fnr: String, saksblokk: String, saksnr: String): DecisionResult {
-    var result: String? = null
-    val elapsed: Duration = measureTime {
-        getPreparedStatementDecisionResult().use { pstmt ->
-            pstmt.setString(1, "$tknr$fnr") // S01_PERSONKEY
-            pstmt.setString(2, saksblokk) // S05_SAKSBLOKK
-            pstmt.setString(3, saksnr) // S10_SAKSNR
-            pstmt.executeQuery().use { rs ->
-                while (rs.next()) {
-                    if (result != null) {
-                        throw Exception("we found multiple results for query, this is not supported") // Multiple results not supported
+fun queryForDecisionResult(reqs: List<VedtakResultatRequest>): List<VedtakResultatResponse> {
+    var results = mutableListOf<VedtakResultatResponse>()
+    getPreparedStatementDecisionResult().use { pstmt ->
+        for (req in reqs) {
+            var result: String? = null
+            var error: String? = null
+            val elapsed: Duration = measureTime {
+                pstmt.clearParameters()
+                pstmt.setString(1, "${req.tknr}${req.fnr}") // S01_PERSONKEY
+                pstmt.setString(2, req.saksblokk) // S05_SAKSBLOKK
+                pstmt.setString(3, req.saksnr) // S10_SAKSNR
+                pstmt.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        if (result != null) {
+                            error = "we found multiple results for query, this is not supported" // Multiple results not supported
+                        }else{
+                            result = rs.getString("S10_RESULTAT")
+                        }
                     }
-                    result = rs.getString("S10_RESULTAT")
                 }
             }
+            if (result == null) error = "no such decision in the database"
+            results.add(VedtakResultatResponse(result, error, elapsed.inMilliseconds))
         }
     }
-    if (result == null) throw Exception("no such decision in the database")
-    return DecisionResult(result!!, elapsed.inMilliseconds)
+    return results
 }
