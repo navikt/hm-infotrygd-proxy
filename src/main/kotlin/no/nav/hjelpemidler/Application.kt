@@ -107,7 +107,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     // even if we are connected to the production db: INFOTRYGD_P
     val query = """
         SELECT S10_RESULTAT
-        FROM " + ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]} + ".SA_SAK_10
+        FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
         WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
         AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
     """.trimIndent().split("\n").joinToString(" ")
