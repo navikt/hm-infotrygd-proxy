@@ -105,12 +105,14 @@ fun Application.module(testing: Boolean = false) {
 fun getPreparedStatementDecisionResult(): PreparedStatement {
     // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
     // even if we are connected to the production db: INFOTRYGD_P
-    return dbConnection!!.prepareStatement("""
+    val query = """
         SELECT S10_RESULTAT
         FROM " + ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]} + ".SA_SAK_10
         WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
         AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-    """.trimIndent())
+    """.trimIndent().split("\n").joinToString(" ")
+    logg.info("DEBUG: SQL query being prepared: $query")
+    return dbConnection!!.prepareStatement(query)
 }
 
 data class DecisionResult (
