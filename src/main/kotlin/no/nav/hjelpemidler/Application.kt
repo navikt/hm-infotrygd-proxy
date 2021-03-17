@@ -81,7 +81,7 @@ fun Application.module(testing: Boolean = false) {
         authenticate("aad") {
             post("/vedtak-resultat") {
                 try {
-                    val reqs = call.receive<List<VedtakResultatRequest>>()
+                    val reqs = call.receive<Array<VedtakResultatRequest>>()
                     logg.info("Incoming authenticated request for /vedtak-resultat (with parameters: $reqs)")
                     val res = queryForDecisionResult(reqs)
                     call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
@@ -122,7 +122,7 @@ data class VedtakResultatResponse (
 )
 
 @ExperimentalTime
-fun queryForDecisionResult(reqs: List<VedtakResultatRequest>): List<VedtakResultatResponse> {
+fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResultatResponse> {
     var results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
@@ -147,5 +147,5 @@ fun queryForDecisionResult(reqs: List<VedtakResultatRequest>): List<VedtakResult
             results.add(VedtakResultatResponse(result, error, elapsed.inMilliseconds))
         }
     }
-    return results
+    return results.toTypedArray()
 }
