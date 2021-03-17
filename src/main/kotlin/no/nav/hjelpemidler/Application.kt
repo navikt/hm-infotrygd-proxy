@@ -109,7 +109,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
         SELECT S10_RESULTAT
         FROM " + ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]} + ".SA_SAK_10
         WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
-        AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99'
+        AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
     """.trimIndent())
 }
 
