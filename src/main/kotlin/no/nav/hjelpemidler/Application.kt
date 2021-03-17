@@ -80,7 +80,11 @@ fun Application.module(testing: Boolean = false) {
 
     install(CallLogging) {
         level = Level.TRACE
-        filter { call -> !call.request.path().startsWith("/internal") }
+        filter { call ->
+            !call.request.path().startsWith("/internal") &&
+            !call.request.path().startsWith("/isalive") &&
+            !call.request.path().startsWith("/isready")
+        }
     }
 
     routing {
