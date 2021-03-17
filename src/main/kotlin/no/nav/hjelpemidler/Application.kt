@@ -23,6 +23,7 @@ import org.json.simple.JSONObject
 import org.slf4j.event.Level
 import java.sql.Connection
 import java.sql.PreparedStatement
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
@@ -31,6 +32,7 @@ private val logg = KotlinLogging.logger {}
 // private val sikkerlogg = KotlinLogging.logger("tjenestekall")
 
 private var dbConnection: Connection? = null
+private val ready = AtomicBoolean(false)
 
 fun main(args: Array<String>) {
     logg.info("Hello world")
@@ -54,7 +56,11 @@ fun main(args: Array<String>) {
     logg.info("Driver Version: " + dbmd.driverVersion)
 
     // Serve http REST API requests
+    ready.set(true)
     EngineMain.main(args)
+
+    // Note: We do not want to set ready=false again, dbConnection.isValid() will have kubernetes restart our entire pod as it is closed below.
+    // and setting ready=false forces our /isAlive-endpoint to always say "ALIVE".
 
     // Cleanup
     logg.info("Cleaning up and stopping.")
@@ -78,6 +84,20 @@ fun Application.module(testing: Boolean = false) {
     }
 
     routing {
+        // Endpoints for Kubernetes unauthenticated health checks
+
+        get("/isalive") {
+            // If we have gotten ready=true we check that dbConnection is still valid, or else we are ALIVE (so we don't get our pod restarted during startup)
+            if (ready.get() && !dbConnection!!.isValid(10)) return@get call.respondText("NOT ALIVE", ContentType.Text.Plain, HttpStatusCode.ServiceUnavailable)
+            call.respondText("ALIVE", ContentType.Text.Plain)
+        }
+
+        get("/isready") {
+            if (!ready.get()) return@get call.respondText("NOT READY", ContentType.Text.Plain, HttpStatusCode.ServiceUnavailable)
+            call.respondText("READY", ContentType.Text.Plain)
+        }
+
+        // Authenticated database proxy requests
         authenticate("aad") {
             post("/vedtak-resultat") {
                 try {
@@ -108,8 +128,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
         WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
         AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
     """.trimIndent().split("\n").joinToString(" ")
-
-    logg.info("DEBUG: SQL query being prepared: $query")
+    // logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
 }
 

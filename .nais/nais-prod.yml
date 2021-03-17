@@ -7,9 +7,29 @@ metadata:
     team: teamdigihot
 spec:
   image: {{image}}
+  port: 8080
   secureLogs:
     enabled: true
+  liveness:
+    path: /isalive
+  readiness:
+    path: /isready
+  vault:
+    enabled: true
+    paths:
+      - kvPath: oracle/data/dev/creds/infotrygd_p-user
+        mountPath: /secrets/infotrygd_hj/credentials
+      - kvPath: oracle/data/dev/config/infotrygd_p
+        mountPath: /secrets/infotrygd_hj/config
+  ingresses:
+    - https://hm-infotrygd-proxy.prod-fss-pub.nais.io
+  azure:
+    application:
+      enabled: true
+  webproxy: true
   accessPolicy:
-    outbound:
-      external:
-        - host: a01dbfl033.adeo.no
+    inbound:
+      rules:
+        - application: hm-infotrygd-poller
+          namespace: teamdigihot
+          cluster: prod-gcp
