@@ -167,7 +167,7 @@ data class VedtakResultatResponse (
 
 @ExperimentalTime
 fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResultatResponse> {
-    var results = mutableListOf<VedtakResultatResponse>()
+    val results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
             var result: String? = null
@@ -182,6 +182,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     while (rs.next()) {
                         if (result != null) {
                             error = "we found multiple results for query, this is not supported" // Multiple results not supported
+                            break
                         }else{
                             result = rs.getString("S10_RESULTAT")
                             vedtaksDate = rs.getString("S10_VEDTAKSDATO")
@@ -189,10 +190,9 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     }
                 }
             }
-            if (result == null) error = "no such decision in the database"
+            if (result == null) error = "no such vedtak in the database"
             results.add(VedtakResultatResponse(req, result, vedtaksDate, error, elapsed.inMilliseconds))
         }
     }
     return results.toTypedArray()
 }
-
