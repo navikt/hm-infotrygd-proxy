@@ -120,7 +120,7 @@ fun Application.module(testing: Boolean = false) {
                     logg.info("Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests:")
                     for (i in 1..reqs.size) {
                         val req = reqs[i-1]
-                        val reqInner = VedtakResultatRequest(req.tknr, "[MASKED]", req.saksblokk, req.saksnr)
+                        val reqInner = VedtakResultatRequest(req.id, req.tknr, "[MASKED]", req.saksblokk, req.saksnr)
                         logg.info("– [$i/${reqs.size}] $reqInner")
                     }
 
@@ -150,6 +150,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
 }
 
 data class VedtakResultatRequest(
+    val id: String,
     val tknr: String,
     val fnr: String,
     val saksblokk: String,
