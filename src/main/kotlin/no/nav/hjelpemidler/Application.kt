@@ -29,15 +29,14 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
 private val logg = KotlinLogging.logger {}
-// private val sikkerlogg = KotlinLogging.logger("tjenestekall")
+private val sikkerlogg = KotlinLogging.logger("tjenestekall")
 
 private var dbConnection: Connection? = null
 private val ready = AtomicBoolean(false)
 
 fun main(args: Array<String>) {
-    logg.info("Hello world")
-
     try {
+        sikkerlogg.info("Starting up with db-config-url=${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_URL"]}, db-config-username=${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]}")
 
         // Set up database connection
         val info = Properties()
