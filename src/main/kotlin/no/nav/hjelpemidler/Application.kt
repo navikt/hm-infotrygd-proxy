@@ -140,7 +140,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
     // even if we are connected to the production db: INFOTRYGD_P
     val query = """
-        SELECT S10_RESULTAT
+        SELECT S10_RESULTAT, S10_VEDTAKSDATO
         FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
         WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
         AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
@@ -160,6 +160,7 @@ data class VedtakResultatRequest(
 data class VedtakResultatResponse (
     val req: VedtakResultatRequest,
     val result: String?,
+    val vedtaksDate: String?,
     val error: String?,
     val queryTimeElapsedMs: Double,
 )
@@ -170,6 +171,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
             var result: String? = null
+            var vedtaksDate: String? = null
             var error: String? = null
             val elapsed: Duration = measureTime {
                 pstmt.clearParameters()
@@ -182,12 +184,13 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                             error = "we found multiple results for query, this is not supported" // Multiple results not supported
                         }else{
                             result = rs.getString("S10_RESULTAT")
+                            vedtaksDate = rs.getString("S10_VEDTAKSDATO")
                         }
                     }
                 }
             }
             if (result == null) error = "no such decision in the database"
-            results.add(VedtakResultatResponse(req, result, error, elapsed.inMilliseconds))
+            results.add(VedtakResultatResponse(req, result, vedtaksDate, error, elapsed.inMilliseconds))
         }
     }
     return results.toTypedArray()
