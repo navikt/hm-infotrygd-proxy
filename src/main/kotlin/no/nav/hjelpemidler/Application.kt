@@ -37,23 +37,33 @@ private val ready = AtomicBoolean(false)
 fun main(args: Array<String>) {
     logg.info("Hello world")
 
-    // Set up database connection
-    val info = Properties()
-    info[OracleConnection.CONNECTION_PROPERTY_USER_NAME] = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]!!
-    info[OracleConnection.CONNECTION_PROPERTY_PASSWORD] = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_PW"]!!
-    info[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
+    try {
 
-    val ods = OracleDataSource()
-    ods.url = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_URL"]!!
-    ods.connectionProperties = info
+        // Set up database connection
+        val info = Properties()
+        info[OracleConnection.CONNECTION_PROPERTY_USER_NAME] = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]!!
+        info[OracleConnection.CONNECTION_PROPERTY_PASSWORD] = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_PW"]!!
+        info[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
 
-    logg.info("Connecting to database")
-    dbConnection = ods.getConnection()
+        val ods = OracleDataSource()
+        ods.url = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_URL"]!!
+        ods.connectionProperties = info
 
-    logg.info("Fetching db metadata")
-    val dbmd = dbConnection!!.metaData
-    logg.info("Driver Name: " + dbmd.driverName)
-    logg.info("Driver Version: " + dbmd.driverVersion)
+        logg.info("Connecting to database")
+        dbConnection = ods.getConnection()
+
+        logg.info("Fetching db metadata")
+        val dbmd = dbConnection!!.metaData
+        logg.info("Driver Name: " + dbmd.driverName)
+        logg.info("Driver Version: " + dbmd.driverVersion)
+
+    }catch(e: Exception) {
+        logg.info("Exception: $e")
+        e.printStackTrace()
+
+        logg.info("DEBUG: Sleeping forever due to exception...")
+        Thread.sleep(1000*60*60*24)
+    }
 
     // Serve http REST API requests
     ready.set(true)
