@@ -195,3 +195,4 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     }
     return results.toTypedArray()
 }
+
