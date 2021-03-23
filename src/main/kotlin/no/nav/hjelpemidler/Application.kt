@@ -23,6 +23,7 @@ import org.json.simple.JSONObject
 import org.slf4j.event.Level
 import java.sql.Connection
 import java.sql.PreparedStatement
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.chrono.IsoChronology
 import java.time.format.DateTimeFormatter
@@ -166,7 +167,7 @@ data class VedtakResultatRequest(
 data class VedtakResultatResponse (
     val req: VedtakResultatRequest,
     val result: String?,
-    val vedtaksDate: LocalDateTime?,
+    val vedtaksDate: LocalDate?,
     val error: String?,
     val queryTimeElapsedMs: Double,
 )
@@ -212,7 +213,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     .parseStrict()
                     .toFormatter()
 
-                val parsedVedtaksDate = LocalDateTime.parse(vedtaksDate!!, formatter)
+                val parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
                 results.add(VedtakResultatResponse(req, result, parsedVedtaksDate, error, elapsed.inMilliseconds))
             } catch (e: Exception) {
                 val err = "error: could not parse vedtaksDate: $e"

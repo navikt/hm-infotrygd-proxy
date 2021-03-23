@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.4.21"
 }
+
 val logging_version: String by project
 val logback_version: String by project
 val konfig_version: String by project
@@ -21,6 +22,8 @@ repositories {
 }
 
 dependencies {
+    testImplementation(kotlin("test-junit"))
+
     implementation("io.github.microutils:kotlin-logging:$logging_version")
     implementation("com.natpryce:konfig:$konfig_version")
     implementation("com.beust:klaxon:$klaxon_version")
@@ -36,6 +39,8 @@ dependencies {
     implementation("io.ktor:ktor-auth-jwt:$ktor_version")
     implementation("io.ktor:ktor-jackson:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("junit:junit:4.12")
+    implementation("org.junit.jupiter:junit-jupiter:5.4.2")
 }
 
 tasks.withType<KotlinCompile>() {
