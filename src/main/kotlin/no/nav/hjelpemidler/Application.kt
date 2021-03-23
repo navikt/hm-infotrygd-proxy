@@ -23,6 +23,12 @@ import org.json.simple.JSONObject
 import org.slf4j.event.Level
 import java.sql.Connection
 import java.sql.PreparedStatement
+import java.time.LocalDateTime
+import java.time.chrono.IsoChronology
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
+import java.time.format.ResolverStyle
+import java.time.temporal.ChronoField
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
@@ -160,7 +166,7 @@ data class VedtakResultatRequest(
 data class VedtakResultatResponse (
     val req: VedtakResultatRequest,
     val result: String?,
-    val vedtaksDate: String?,
+    val vedtaksDate: LocalDateTime?,
     val error: String?,
     val queryTimeElapsedMs: Double,
 )
@@ -186,12 +192,38 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         }else{
                             result = rs.getString("S10_RESULTAT")
                             vedtaksDate = rs.getString("S10_VEDTAKSDATO")
+                            if (vedtaksDate!!.length == 7) vedtaksDate = "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
                         }
                     }
                 }
             }
+
             if (result == null) error = "no such vedtak in the database"
-            results.add(VedtakResultatResponse(req, result, vedtaksDate, error, elapsed.inMilliseconds))
+
+            try {
+                val formatter = DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendValue(ChronoField.DAY_OF_MONTH, 2)
+                    .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+                    .appendValue(ChronoField.YEAR, 4)
+                    .optionalStart()
+                    .parseLenient()
+                    .appendOffset("+HHMMss", "Z")
+                    .parseStrict()
+                    .toFormatter()
+
+                val parsedVedtaksDate = LocalDateTime.parse(vedtaksDate!!, formatter)
+                results.add(VedtakResultatResponse(req, result, parsedVedtaksDate, error, elapsed.inMilliseconds))
+            } catch (e: Exception) {
+                val err = "error: could not parse vedtaksDate: $e"
+                error = if (error != null) "error: $error; $err" else err
+
+                logg.error(error)
+                e.printStackTrace()
+
+                results.add(VedtakResultatResponse(req, result, null, error, elapsed.inMilliseconds))
+            }
+
         }
     }
     return results.toTypedArray()
