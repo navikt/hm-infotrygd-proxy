@@ -148,7 +148,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     // even if we are connected to the production db: INFOTRYGD_P
     val query =
         """
-            SELECT S10_RESULTAT, S10_VEDTAKSDATO, TO_DATE(to_char(S10_VEDTAKSDATO,'09099999'), 'ddmmyyyy') AS altdate1, TO_DATE(to_char(S10_VEDTAKSDATO,'99990909'), 'yyyymmdd') AS altdate2
+            SELECT S10_RESULTAT, TO_DATE(to_char(S10_VEDTAKSDATO,'09099999'), 'ddmmyyyy') AS S10_VEDTAKSDATO
             FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
             WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
@@ -179,7 +179,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
             var vedtaksResult: String? = null
-            var vedtaksDate: String? = null
+            var vedtaksDate: LocalDate? = null
             var error: String? = null
             val elapsed: Duration = measureTime {
                 pstmt.clearParameters()
@@ -193,41 +193,14 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                             break
                         }else{
                             vedtaksResult = rs.getString("S10_RESULTAT")
-                            vedtaksDate = rs.getString("S10_VEDTAKSDATO")
-                            logg.info("DEBUG: 1: " + rs.getString("altdate1"))
-                            logg.info("DEBUG: 2: " + rs.getString("altdate2"))
-                            if (vedtaksDate!!.length == 7) vedtaksDate = "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
+                            vedtaksDate = LocalDate.parse(rs.getString("S10_VEDTAKSDATO"))
                         }
                     }
                 }
             }
 
             if (vedtaksResult == null) error = "no such vedtak in the database"
-
-            try {
-                val formatter = DateTimeFormatterBuilder()
-                    .parseCaseInsensitive()
-                    .appendValue(ChronoField.DAY_OF_MONTH, 2)
-                    .appendValue(ChronoField.MONTH_OF_YEAR, 2)
-                    .appendValue(ChronoField.YEAR, 4)
-                    .optionalStart()
-                    .parseLenient()
-                    .appendOffset("+HHMMss", "Z")
-                    .parseStrict()
-                    .toFormatter()
-
-                val parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
-                results.add(VedtakResultatResponse(req, vedtaksResult, parsedVedtaksDate, error, elapsed.inMilliseconds))
-            } catch (e: Exception) {
-                val err = "error: could not parse vedtaksDate: $e"
-                error = if (error != null) "error: $error; $err" else err
-
-                logg.error(error)
-                e.printStackTrace()
-
-                results.add(VedtakResultatResponse(req, vedtaksResult, null, error, elapsed.inMilliseconds))
-            }
-
+            results.add(VedtakResultatResponse(req, vedtaksResult, vedtaksDate, error, elapsed.inMilliseconds))
         }
     }
     return results.toTypedArray()
