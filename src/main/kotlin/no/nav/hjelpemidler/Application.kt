@@ -146,12 +146,13 @@ fun Application.module(testing: Boolean = false) {
 fun getPreparedStatementDecisionResult(): PreparedStatement {
     // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
     // even if we are connected to the production db: INFOTRYGD_P
-    val query = """
-        SELECT S10_RESULTAT, S10_VEDTAKSDATO
-        FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
-        WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
-        AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-    """.trimIndent().split("\n").joinToString(" ")
+    val query =
+        """
+            SELECT S10_RESULTAT, S10_VEDTAKSDATO, TO_DATE(to_char(S10_VEDTAKSDATO,'09099999'), 'ddmmyyyy') AS altdate1, TO_DATE(to_char(S10_VEDTAKSDATO,'09099999'), 'yyyymmdd') AS altdate2
+            FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
+            WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+        """.trimIndent().split("\n").joinToString(" ")
     // logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
 }
@@ -166,7 +167,7 @@ data class VedtakResultatRequest(
 
 data class VedtakResultatResponse (
     val req: VedtakResultatRequest,
-    val result: String?,
+    val vedtaksResult: String?,
     val vedtaksDate: LocalDate?,
     val error: String?,
     val queryTimeElapsedMs: Double,
@@ -177,7 +178,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     val results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
-            var result: String? = null
+            var vedtaksResult: String? = null
             var vedtaksDate: String? = null
             var error: String? = null
             val elapsed: Duration = measureTime {
@@ -187,19 +188,21 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 pstmt.setString(3, req.saksnr) // S10_SAKSNR
                 pstmt.executeQuery().use { rs ->
                     while (rs.next()) {
-                        if (result != null) {
+                        if (vedtaksResult != null) {
                             error = "we found multiple results for query, this is not supported" // Multiple results not supported
                             break
                         }else{
-                            result = rs.getString("S10_RESULTAT")
+                            vedtaksResult = rs.getString("S10_RESULTAT")
                             vedtaksDate = rs.getString("S10_VEDTAKSDATO")
+                            logg.info("DEBUG: 1: " + rs.getString("altdate1"))
+                            logg.info("DEBUG: 2: " + rs.getString("altdate2"))
                             if (vedtaksDate!!.length == 7) vedtaksDate = "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
                         }
                     }
                 }
             }
 
-            if (result == null) error = "no such vedtak in the database"
+            if (vedtaksResult == null) error = "no such vedtak in the database"
 
             try {
                 val formatter = DateTimeFormatterBuilder()
@@ -214,7 +217,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     .toFormatter()
 
                 val parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
-                results.add(VedtakResultatResponse(req, result, parsedVedtaksDate, error, elapsed.inMilliseconds))
+                results.add(VedtakResultatResponse(req, vedtaksResult, parsedVedtaksDate, error, elapsed.inMilliseconds))
             } catch (e: Exception) {
                 val err = "error: could not parse vedtaksDate: $e"
                 error = if (error != null) "error: $error; $err" else err
@@ -222,7 +225,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 logg.error(error)
                 e.printStackTrace()
 
-                results.add(VedtakResultatResponse(req, result, null, error, elapsed.inMilliseconds))
+                results.add(VedtakResultatResponse(req, vedtaksResult, null, error, elapsed.inMilliseconds))
             }
 
         }
