@@ -148,7 +148,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     // even if we are connected to the production db: INFOTRYGD_P
     val query =
         """
-            SELECT S10_RESULTAT, S10_VEDTAKSDATO, TO_DATE(to_char(S10_VEDTAKSDATO,'09099999'), 'ddmmyyyy') AS altdate1, TO_DATE(to_char(S10_VEDTAKSDATO,'09099999'), 'yyyymmdd') AS altdate2
+            SELECT S10_RESULTAT, S10_VEDTAKSDATO, TO_DATE(to_char(S10_VEDTAKSDATO,'09099999'), 'ddmmyyyy') AS altdate1, TO_DATE(to_char(S10_VEDTAKSDATO,'99990909'), 'yyyymmdd') AS altdate2
             FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
             WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
