@@ -193,7 +193,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                             break
                         }else{
                             vedtaksResult = rs.getString("S10_RESULTAT")
-                            vedtaksDate = LocalDate.parse(rs.getString("S10_VEDTAKSDATO"))
+                            vedtaksDate = rs.getDate("S10_VEDTAKSDATO").toLocalDate()
                         }
                     }
                 }
