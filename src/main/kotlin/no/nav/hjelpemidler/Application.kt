@@ -69,6 +69,7 @@ fun main(args: Array<String>) {
 
         logg.info("DEBUG: Sleeping forever due to exception...")
         Thread.sleep(1000*60*60*24)
+        throw e
     }
 
     // Serve http REST API requests
@@ -124,12 +125,14 @@ fun Application.module(testing: Boolean = false) {
 
                     val reqs = call.receive<Array<VedtakResultatRequest>>()
 
-                    logg.info("Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests:")
+                    logg.info("Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests")
+                    /*
                     for (i in 1..reqs.size) {
                         val req = reqs[i-1]
                         val reqInner = VedtakResultatRequest(req.id, req.tknr, "[MASKED]", req.saksblokk, req.saksnr)
                         logg.info("– [$i/${reqs.size}] $reqInner")
                     }
+                     */
 
                     val res = queryForDecisionResult(reqs)
                     call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
