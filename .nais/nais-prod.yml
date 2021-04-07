@@ -17,9 +17,9 @@ spec:
   vault:
     enabled: true
     paths:
-      - kvPath: oracle/data/prod/creds/infotrygd_p-user
+      - kvPath: oracle/data/prod/creds/HJ_INFOTRYGD_P-user
         mountPath: /secrets/infotrygd_hj/credentials
-      - kvPath: oracle/data/prod/config/infotrygd_p
+      - kvPath: oracle/data/prod/config/HJ_INFOTRYGD_P
         mountPath: /secrets/infotrygd_hj/config
   ingresses:
     - https://hm-infotrygd-proxy.prod-fss-pub.nais.io
