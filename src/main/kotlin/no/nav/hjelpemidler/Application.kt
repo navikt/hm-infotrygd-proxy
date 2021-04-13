@@ -122,11 +122,13 @@ fun Application.module(testing: Boolean = false) {
         authenticate("aad") {
             post("/vedtak-resultat") {
 
-                // FIXME: Remove this again, just testing!
+                /*
+                // For testing infotrygd down-time
                 call.respondText("""
                     {"error": "testing down-time measurements"}
                 """.trimIndent(), ContentType.Application.Json, HttpStatusCode.InternalServerError)
                 return@post
+                 */
 
                 try {
 

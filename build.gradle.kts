@@ -10,6 +10,7 @@ val konfig_version: String by project
 val klaxon_version: String by project
 val ojdbc_version: String by project
 val ktor_version: String by project
+val unleash_version: String by project
 
 group = "no.nav.hjelpemidler"
 version = "1.0-SNAPSHOT"
@@ -41,6 +42,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("junit:junit:4.12")
     implementation("org.junit.jupiter:junit-jupiter:5.4.2")
+    implementation("no.finn.unleash:unleash-client-java:$unleash_version")
 }
 
 tasks.withType<KotlinCompile>() {
