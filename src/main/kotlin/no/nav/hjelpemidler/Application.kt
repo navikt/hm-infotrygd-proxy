@@ -190,6 +190,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     val results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
+            var foundResult = false
             var vedtaksResult: String? = null
             var vedtaksDate: LocalDate? = null
             var error: String? = null
@@ -202,10 +203,11 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 // pstmt.setString(5, "99") // '99'
                 pstmt.executeQuery().use { rs ->
                     while (rs.next()) {
-                        if (vedtaksResult != null) {
+                        if (foundResult) {
                             error = "we found multiple results for query, this is not supported" // Multiple results not supported
                             break
                         }else{
+                            foundResult = true
                             vedtaksResult = rs.getString("S10_RESULTAT")
                             vedtaksDate = rs.getDate("S10_VEDTAKSDATO").toLocalDate()
                         }
@@ -213,7 +215,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 }
             }
 
-            if (vedtaksResult == null) error = "no such vedtak in the database"
+            if (!foundResult) error = "no such vedtak in the database"
             results.add(VedtakResultatResponse(req, vedtaksResult, vedtaksDate, error, elapsed.inMilliseconds))
         }
     }
