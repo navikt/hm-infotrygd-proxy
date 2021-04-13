@@ -232,6 +232,9 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
                 var parsedVedtaksDate: LocalDate? = null
                 if (vedtaksDate != "0") parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
+
+                if (vedtaksResult != null && vedtaksResult == "  ") vedtaksResult = ""
+
                 results.add(VedtakResultatResponse(req, vedtaksResult, parsedVedtaksDate, error, elapsed.inMilliseconds))
 
             } catch (e: Exception) {
