@@ -192,7 +192,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
         for (req in reqs) {
             var foundResult = false
             var vedtaksResult: String? = null
-            var vedtaksDate: LocalDate? = null
+            var vedtaksDate: String? = null
             var error: String? = null
             val elapsed: Duration = measureTime {
                 pstmt.clearParameters()
@@ -209,14 +209,40 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         }else{
                             foundResult = true
                             vedtaksResult = rs.getString("S10_RESULTAT")
-                            vedtaksDate = rs.getDate("S10_VEDTAKSDATO").toLocalDate()
+                            vedtaksDate = rs.getString("S10_VEDTAKSDATO")
+                            if (vedtaksDate!!.length == 7) vedtaksDate = "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
                         }
                     }
                 }
             }
 
             if (!foundResult) error = "no such vedtak in the database"
-            results.add(VedtakResultatResponse(req, vedtaksResult, vedtaksDate, error, elapsed.inMilliseconds))
+
+            try {
+                val formatter = DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendValue(ChronoField.DAY_OF_MONTH, 2)
+                    .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+                    .appendValue(ChronoField.YEAR, 4)
+                    .optionalStart()
+                    .parseLenient()
+                    .appendOffset("+HHMMss", "Z")
+                    .parseStrict()
+                    .toFormatter()
+
+                var parsedVedtaksDate: LocalDate? = null
+                if (vedtaksDate != "0") parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
+                results.add(VedtakResultatResponse(req, vedtaksResult, parsedVedtaksDate, error, elapsed.inMilliseconds))
+
+            } catch (e: Exception) {
+                val err = "error: could not parse vedtaksDate: $e"
+                error = if (error != null) "error: $error; $err" else err
+
+                logg.error(error)
+                e.printStackTrace()
+
+                results.add(VedtakResultatResponse(req, vedtaksResult, null, error, elapsed.inMilliseconds))
+            }
         }
     }
     return results.toTypedArray()
