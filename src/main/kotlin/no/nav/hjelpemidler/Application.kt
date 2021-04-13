@@ -121,6 +121,13 @@ fun Application.module(testing: Boolean = false) {
         // Authenticated database proxy requests
         authenticate("aad") {
             post("/vedtak-resultat") {
+
+                // FIXME: Remove this again, just testing!
+                call.respondText("""
+                    {"error": "testing down-time measurements"}
+                """.trimIndent(), ContentType.Application.Json, HttpStatusCode.InternalServerError)
+                return@post
+
                 try {
 
                     val reqs = call.receive<Array<VedtakResultatRequest>>()
