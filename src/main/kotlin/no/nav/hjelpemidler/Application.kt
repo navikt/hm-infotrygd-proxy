@@ -163,7 +163,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
             SELECT S10_RESULTAT, TO_DATE(to_char(S10_VEDTAKSDATO,'09099999'), 'ddmmyyyy') AS S10_VEDTAKSDATO
             FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
             WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
-            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            AND (DB_SPLITT = ? OR DB_SPLITT = ?)
         """.trimIndent().split("\n").joinToString(" ")
     // logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
@@ -198,6 +198,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 pstmt.setString(1, "${req.tknr}${req.fnr}") // S01_PERSONKEY
                 pstmt.setString(2, req.saksblokk) // S05_SAKSBLOKK
                 pstmt.setString(3, req.saksnr) // S10_SAKSNR
+                pstmt.setString(4, "HJ") // 'HJ'
+                pstmt.setString(5, "99") // '99'
                 pstmt.executeQuery().use { rs ->
                     while (rs.next()) {
                         if (vedtaksResult != null) {
