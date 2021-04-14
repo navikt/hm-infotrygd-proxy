@@ -187,6 +187,17 @@ data class VedtakResultatResponse (
 
 @ExperimentalTime
 fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResultatResponse> {
+    val formatter = DateTimeFormatterBuilder()
+        .parseCaseInsensitive()
+        .appendValue(ChronoField.DAY_OF_MONTH, 2)
+        .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+        .appendValue(ChronoField.YEAR, 4)
+        .optionalStart()
+        .parseLenient()
+        .appendOffset("+HHMMss", "Z")
+        .parseStrict()
+        .toFormatter()
+
     val results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
@@ -219,20 +230,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
             if (!foundResult) error = "no such vedtak in the database"
 
             try {
-                val formatter = DateTimeFormatterBuilder()
-                    .parseCaseInsensitive()
-                    .appendValue(ChronoField.DAY_OF_MONTH, 2)
-                    .appendValue(ChronoField.MONTH_OF_YEAR, 2)
-                    .appendValue(ChronoField.YEAR, 4)
-                    .optionalStart()
-                    .parseLenient()
-                    .appendOffset("+HHMMss", "Z")
-                    .parseStrict()
-                    .toFormatter()
-
                 var parsedVedtaksDate: LocalDate? = null
-                if (vedtaksDate != "0") parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
-
+                if (vedtaksDate != null && vedtaksDate != "0") parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
                 if (vedtaksResult != null && vedtaksResult == "  ") vedtaksResult = ""
 
                 results.add(VedtakResultatResponse(req, vedtaksResult, parsedVedtaksDate, error, elapsed.inMilliseconds))
@@ -250,4 +249,3 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     }
     return results.toTypedArray()
 }
-
