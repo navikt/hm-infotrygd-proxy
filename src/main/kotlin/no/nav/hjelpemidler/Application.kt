@@ -172,11 +172,11 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
 fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
     val query =
         """
-            SELECT 1
+            SELECT count(*) AS number_of_rows
             FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
             WHERE S01_PERSONKEY = ?
-            FETCH NEXT 1 ROWS ONLY
         """.trimIndent().split("\n").joinToString(" ")
+    //             FETCH NEXT 1 ROWS ONLY
     return dbConnection!!.prepareStatement(query)
 }
 
@@ -253,7 +253,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     pstmt2.setString(1, "${req.tknr}${req.fnr}") // S01_PERSONKEY
                     pstmt2.executeQuery().use { rs ->
                         if (rs.next()) {
-                            error += "; however personKey has rows in the table."
+                            error += "; however personKey has rows in the table: #" + rs.getInt("number_of_rows").toString()
                         }
                     }
                 }
