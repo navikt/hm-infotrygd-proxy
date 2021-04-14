@@ -201,6 +201,13 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     val results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
+            // Check if request looks right
+            if (req.fnr.length != 11) logg.error("error: request with id=${req.id} has a fnr of length: ${req.fnr.length} != 11")
+            if (req.tknr.length != 4) logg.error("error: request with id=${req.id} has a tknr of length: ${req.tknr.length} != 4")
+            if (req.saksblokk.length != 1) logg.error("error: request with id=${req.id} has an saksblokk of length: ${req.saksblokk.length} != 1")
+            if (req.saksnr.length != 2) logg.error("error: request with id=${req.id} has an saksnr of length: ${req.saksnr.length} != 2")
+
+            // Look up the request in the Infotrygd replication database
             var foundResult = false
             var vedtaksResult: String? = null
             var vedtaksDate: String? = null
