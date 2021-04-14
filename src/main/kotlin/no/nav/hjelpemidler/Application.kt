@@ -169,6 +169,17 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     return dbConnection!!.prepareStatement(query)
 }
 
+fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
+    val query =
+        """
+            SELECT 1
+            FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
+            WHERE S01_PERSONKEY = ?
+            FETCH NEXT 1 ROWS ONLY
+        """.trimIndent().split("\n").joinToString(" ")
+    return dbConnection!!.prepareStatement(query)
+}
+
 data class VedtakResultatRequest(
     val id: String,
     val tknr: String,
@@ -234,7 +245,19 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 }
             }
 
-            if (!foundResult) error = "no such vedtak in the database"
+            if (!foundResult) {
+                error = "no such vedtak in the database"
+
+                getPreparedStatementDoesPersonkeyExist().use { pstmt2 ->
+                    pstmt2.clearParameters()
+                    pstmt2.setString(1, "${req.tknr}${req.fnr}") // S01_PERSONKEY
+                    pstmt2.executeQuery().use { rs ->
+                        if (rs.next()) {
+                            error += "; however personKey has rows in the table."
+                        }
+                    }
+                }
+            }
 
             try {
                 var parsedVedtaksDate: LocalDate? = null
@@ -244,7 +267,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 results.add(VedtakResultatResponse(req, vedtaksResult, parsedVedtaksDate, error, elapsed.inMilliseconds))
 
             } catch (e: Exception) {
-                val err = "error: could not parse vedtaksDate: $e"
+                val err = "error: could not parse vedtaksDate=$vedtaksDate: $e"
                 error = if (error != null) "error: $error; $err" else err
 
                 logg.error(error)
