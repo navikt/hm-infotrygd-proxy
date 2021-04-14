@@ -162,9 +162,9 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
         """
             SELECT S10_RESULTAT, S10_VEDTAKSDATO
             FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
-            WHERE S01_PERSONKEY = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
+            WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
-    //             AND (DB_SPLITT = ? OR DB_SPLITT = ?)
     // logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
 }
@@ -174,9 +174,9 @@ fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
         """
             SELECT count(*) AS number_of_rows
             FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
-            WHERE S01_PERSONKEY = ?
+            WHERE TK_NR = ? AND F_NR = ?
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
-    //             FETCH NEXT 1 ROWS ONLY
     return dbConnection!!.prepareStatement(query)
 }
 
@@ -218,6 +218,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
             if (req.saksblokk.length != 1) logg.error("error: request with id=${req.id} has an saksblokk of length: ${req.saksblokk.length} != 1")
             if (req.saksnr.length != 2) logg.error("error: request with id=${req.id} has an saksnr of length: ${req.saksnr.length} != 2")
 
+            val fnr = "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
+
             // Look up the request in the Infotrygd replication database
             var foundResult = false
             var vedtaksResult: String? = null
@@ -225,11 +227,10 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
             var error: String? = null
             val elapsed: Duration = measureTime {
                 pstmt.clearParameters()
-                pstmt.setString(1, "${req.tknr}${req.fnr}") // S01_PERSONKEY
-                pstmt.setString(2, req.saksblokk) // S05_SAKSBLOKK
-                pstmt.setString(3, req.saksnr) // S10_SAKSNR
-                // pstmt.setString(4, "HJ") // 'HJ'
-                // pstmt.setString(5, "99") // '99'
+                pstmt.setString(1, req.tknr)        // TK_NR
+                pstmt.setString(2, fnr)             // F_NR
+                pstmt.setString(3, req.saksblokk)   // S05_SAKSBLOKK
+                pstmt.setString(4, req.saksnr)      // S10_SAKSNR
                 pstmt.executeQuery().use { rs ->
                     while (rs.next()) {
                         if (foundResult) {
@@ -250,7 +251,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
                 getPreparedStatementDoesPersonkeyExist().use { pstmt2 ->
                     pstmt2.clearParameters()
-                    pstmt2.setString(1, "${req.tknr}${req.fnr}") // S01_PERSONKEY
+                    pstmt.setString(1, req.tknr)        // TK_NR
+                    pstmt.setString(2, fnr)             // F_NR
                     pstmt2.executeQuery().use { rs ->
                         if (rs.next()) {
                             error += "; however personKey has rows in the table: #" + rs.getInt("number_of_rows").toString()
