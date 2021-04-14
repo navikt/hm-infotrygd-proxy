@@ -1,36 +1,52 @@
 package no.nav.hjelpemidler
 
 import com.beust.klaxon.Klaxon
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.routing.*
-import io.ktor.auth.jwt.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.features.*
-import io.ktor.http.*
-import io.ktor.jackson.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.server.netty.*
-import io.ktor.util.*
-import java.util.*
+import io.ktor.application.Application
+import io.ktor.application.call
+import io.ktor.application.install
+import io.ktor.auth.authenticate
+import io.ktor.features.CallLogging
+import io.ktor.features.ContentNegotiation
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.jackson.JacksonConverter
+import io.ktor.metrics.micrometer.MicrometerMetrics
+import io.ktor.request.path
+import io.ktor.request.receive
+import io.ktor.response.respond
+import io.ktor.response.respondText
+import io.ktor.response.respondTextWriter
+import io.ktor.routing.get
+import io.ktor.routing.post
+import io.ktor.routing.routing
+import io.ktor.server.netty.EngineMain
+import io.ktor.util.KtorExperimentalAPI
+import io.micrometer.core.instrument.Clock
+import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
+import io.micrometer.core.instrument.binder.kafka.KafkaConsumerMetrics
+import io.micrometer.core.instrument.binder.logging.LogbackMetrics
+import io.micrometer.core.instrument.binder.system.ProcessorMetrics
+import io.micrometer.prometheus.PrometheusConfig
+import io.micrometer.prometheus.PrometheusMeterRegistry
+import io.prometheus.client.CollectorRegistry
+import io.prometheus.client.exporter.common.TextFormat
 import mu.KotlinLogging
 import no.nav.hjelpemidler.configuration.Configuration
+import no.nav.hjelpemidler.metrics.Prometheus
 import oracle.jdbc.OracleConnection
 import oracle.jdbc.pool.OracleDataSource
-import org.json.simple.JSONObject
 import org.slf4j.event.Level
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.chrono.IsoChronology
-import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
-import java.time.format.ResolverStyle
 import java.time.temporal.ChronoField
+import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.collections.set
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
@@ -88,7 +104,7 @@ fun main(args: Array<String>) {
 @KtorExperimentalAPI
 @Suppress("unused") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
-fun Application.module(testing: Boolean = false) {
+fun Application.module() {
     installAuthentication()
 
     install(ContentNegotiation) {
@@ -104,18 +120,50 @@ fun Application.module(testing: Boolean = false) {
         }
     }
 
+    install(MicrometerMetrics) {
+        registry = PrometheusMeterRegistry(
+            PrometheusConfig.DEFAULT,
+            CollectorRegistry.defaultRegistry,
+            Clock.SYSTEM
+        )
+        meterBinders = listOf(
+            ClassLoaderMetrics(),
+            JvmMemoryMetrics(),
+            JvmGcMetrics(),
+            ProcessorMetrics(),
+            JvmThreadMetrics(),
+            LogbackMetrics(),
+            KafkaConsumerMetrics()
+        )
+    }
+
     routing {
         // Endpoints for Kubernetes unauthenticated health checks
 
         get("/isalive") {
             // If we have gotten ready=true we check that dbConnection is still valid, or else we are ALIVE (so we don't get our pod restarted during startup)
-            if (ready.get() && !dbConnection!!.isValid(10)) return@get call.respondText("NOT ALIVE", ContentType.Text.Plain, HttpStatusCode.ServiceUnavailable)
+            if (ready.get() ) {
+                val dbValid = dbConnection!!.isValid(10)
+                if (!dbValid) {
+                    Prometheus.infotrygdDbAvailable.set(0.0)
+                    return@get call.respondText("NOT ALIVE", ContentType.Text.Plain, HttpStatusCode.ServiceUnavailable)
+                }
+                Prometheus.infotrygdDbAvailable.set(1.0)
+            }
             call.respondText("ALIVE", ContentType.Text.Plain)
         }
 
         get("/isready") {
             if (!ready.get()) return@get call.respondText("NOT READY", ContentType.Text.Plain, HttpStatusCode.ServiceUnavailable)
             call.respondText("READY", ContentType.Text.Plain)
+        }
+
+        get("/metrics") {
+            val names = call.request.queryParameters.getAll("name[]")?.toSet() ?: emptySet()
+
+            call.respondTextWriter(ContentType.parse(TextFormat.CONTENT_TYPE_004)) {
+                TextFormat.write004(this, CollectorRegistry.defaultRegistry.filteredMetricFamilySamples(names))
+            }
         }
 
         // Authenticated database proxy requests
