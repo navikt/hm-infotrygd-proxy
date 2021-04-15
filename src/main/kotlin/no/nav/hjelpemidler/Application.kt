@@ -299,8 +299,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
                 getPreparedStatementDoesPersonkeyExist().use { pstmt2 ->
                     pstmt2.clearParameters()
-                    pstmt.setString(1, req.tknr)        // TK_NR
-                    pstmt.setString(2, fnr)             // F_NR
+                    pstmt2.setString(1, req.tknr)        // TK_NR
+                    pstmt2.setString(2, fnr)             // F_NR
                     pstmt2.executeQuery().use { rs ->
                         if (rs.next()) {
                             error += "; however personKey has rows in the table: #" + rs.getInt("number_of_rows").toString()
