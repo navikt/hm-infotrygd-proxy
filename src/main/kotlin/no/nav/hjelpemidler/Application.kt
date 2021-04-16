@@ -33,6 +33,7 @@ import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.common.TextFormat
+import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import no.nav.hjelpemidler.configuration.Configuration
 import no.nav.hjelpemidler.metrics.Prometheus
@@ -41,6 +42,7 @@ import oracle.jdbc.pool.OracleDataSource
 import org.slf4j.event.Level
 import java.sql.Connection
 import java.sql.PreparedStatement
+import java.sql.SQLException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
@@ -58,8 +60,28 @@ private var dbConnection: Connection? = null
 private val ready = AtomicBoolean(false)
 
 fun main(args: Array<String>) {
+    connectToInfotrygdDB()
+
+    // Serve http REST API requests
+    EngineMain.main(args)
+
+    // Note: We do not want to set ready=false again, dbConnection.isValid() will have kubernetes restart our entire pod as it is closed below.
+    // and setting ready=false forces our /isAlive-endpoint to always say "ALIVE".
+
+    // Cleanup
+    logg.info("Cleaning up and stopping.")
+    dbConnection?.close()
+}
+
+fun connectToInfotrygdDB() {
+    // Clean up resources if we have already had a database connection set up here that has now failed
+    ready.set(false)
+    dbConnection?.close()
+    dbConnection = null
+
+    // Set up a new connection
     try {
-        sikkerlogg.info("Starting up with db-config-url=${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_URL"]}, db-config-username=${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]}")
+        sikkerlogg.info("Connecting to Infotrygd database with db-config-url=${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_URL"]}, db-config-username=${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]}")
 
         // Set up database connection
         val info = Properties()
@@ -79,25 +101,36 @@ fun main(args: Array<String>) {
         logg.info("Driver Name: " + dbmd.driverName)
         logg.info("Driver Version: " + dbmd.driverVersion)
 
-    }catch(e: Exception) {
-        logg.info("Exception: $e")
-        e.printStackTrace()
+        logg.info("Database connected, hm-infotrygd-proxy ready")
+        ready.set(true)
 
-        logg.info("DEBUG: Sleeping forever due to exception...")
-        Thread.sleep(1000*60*60*24)
+    }catch(e: Exception) {
+        logg.info("Exception while connecting to database: $e")
+        e.printStackTrace()
         throw e
     }
+}
 
-    // Serve http REST API requests
-    ready.set(true)
-    EngineMain.main(args)
-
-    // Note: We do not want to set ready=false again, dbConnection.isValid() will have kubernetes restart our entire pod as it is closed below.
-    // and setting ready=false forces our /isAlive-endpoint to always say "ALIVE".
-
-    // Cleanup
-    logg.info("Cleaning up and stopping.")
-    dbConnection!!.close()
+// Meant to fix "java.sql.SQLException: ORA-02399: overskred maks. tilkoblingstid, du blir logget av", by reconnection to the database and retrying
+// fun <A : AutoCloseable, R> using(closeable: A?, f: (A) -> R): R {
+//    return LoanPattern.using(closeable, f)
+//}
+fun <T> withRetryIfDatabaseConnectionIsStale(block: () -> T): T {
+    var lastException: SQLException? = null
+    for (attempt in 1..3) { // We get three attempts
+        try {
+            return block() // Success
+        }catch(e: SQLException) {
+            lastException = e
+            if (e.toString().contains("ORA-02399")) {
+                logg.warn("Infotrygd replication database closed the connection due to their connection-max-life deadline, we reconnect and try again: $e")
+                connectToInfotrygdDB() // Reset database connection
+                continue // Retry if we have attempts left
+            }
+            throw e // Unhandled sql error, we throw up
+        }
+    }
+    throw lastException!! // No more attempts so we throw the last exception we had
 }
 
 @ExperimentalTime
@@ -179,10 +212,9 @@ fun Application.module() {
                  */
 
                 try {
-
                     val reqs = call.receive<Array<VedtakResultatRequest>>()
-
                     logg.info("Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests")
+
                     /*
                     for (i in 1..reqs.size) {
                         val req = reqs[i-1]
@@ -191,7 +223,10 @@ fun Application.module() {
                     }
                      */
 
-                    val res = queryForDecisionResult(reqs)
+                    val res = withRetryIfDatabaseConnectionIsStale {
+                        queryForDecisionResult(reqs)
+                    }
+
                     call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
 
                 }catch(e: Exception) {
