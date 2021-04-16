@@ -112,9 +112,6 @@ fun connectToInfotrygdDB() {
 }
 
 // Meant to fix "java.sql.SQLException: ORA-02399: overskred maks. tilkoblingstid, du blir logget av", by reconnection to the database and retrying
-// fun <A : AutoCloseable, R> using(closeable: A?, f: (A) -> R): R {
-//    return LoanPattern.using(closeable, f)
-//}
 fun <T> withRetryIfDatabaseConnectionIsStale(block: () -> T): T {
     var lastException: SQLException? = null
     for (attempt in 1..3) { // We get three attempts
