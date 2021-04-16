@@ -76,7 +76,6 @@ fun main(args: Array<String>) {
 fun connectToInfotrygdDB() {
     // Clean up resources if we have already had a database connection set up here that has now failed
     ready.set(false)
-    dbConnection?.close()
     dbConnection = null
 
     // Set up a new connection
