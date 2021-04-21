@@ -240,7 +240,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     val query =
         """
             SELECT S10_RESULTAT, S10_VEDTAKSDATO
-            FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
+            FROM SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
