@@ -244,7 +244,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
             WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
-    // logg.info("DEBUG: SQL query being prepared: $query")
+    logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
 }
 
@@ -252,10 +252,11 @@ fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
     val query =
         """
             SELECT count(*) AS number_of_rows
-            FROM ${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]}.SA_SAK_10
+            FROM SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
+    logg.info("DEBUG: SQL query being prepared for PersonKeyExists-check: $query")
     return dbConnection!!.prepareStatement(query)
 }
 
