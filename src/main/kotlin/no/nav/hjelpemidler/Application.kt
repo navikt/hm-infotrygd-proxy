@@ -318,8 +318,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                             break
                         }else{
                             foundResult = true
-                            vedtaksResult = rs.getString("S10_RESULTAT")
-                            vedtaksDate = rs.getString("S10_VEDTAKSDATO")
+                            vedtaksResult = rs.getString("S10_RESULTAT").trim()
+                            vedtaksDate = rs.getString("S10_VEDTAKSDATO").trim()
                             if (vedtaksDate!!.length == 7) vedtaksDate = "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
                         }
                     }
