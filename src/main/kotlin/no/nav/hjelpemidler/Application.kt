@@ -231,6 +231,20 @@ fun Application.module() {
                 }
             }
         }
+        get("/har-vedtak-for") {
+            try {
+                val req = call.receive<HarVedtakForRequest>()
+                logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}), saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato}")
+                val res = withRetryIfDatabaseConnectionIsStale {
+                    queryForDecision(req)
+                }
+                call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
+
+            }catch(e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                return@get
+            }
+        }
     }
 }
 
@@ -260,6 +274,20 @@ fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
     return dbConnection!!.prepareStatement(query)
 }
 
+fun getPreparedStatementHasDecisionFor(): PreparedStatement {
+    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
+    // even if we are connected to the production db: INFOTRYGD_P
+    val query =
+        """
+            SELECT 1
+            FROM SA_SAK_10
+            WHERE S10_VEDTAKSDATO = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+        """.trimIndent().split("\n").joinToString(" ")
+    logg.info("DEBUG: SQL query being prepared: $query")
+    return dbConnection!!.prepareStatement(query)
+}
+
 data class VedtakResultatRequest(
     val id: String,
     val tknr: String,
@@ -276,19 +304,30 @@ data class VedtakResultatResponse (
     val queryTimeElapsedMs: Double,
 )
 
+data class HarVedtakForRequest (
+    val fnr: String,
+    val saksblokk: String,
+    val saksnr: String,
+    val vedtaksDato: LocalDate,
+)
+
+data class HarVedtakForResponse (
+    val resultat: Boolean,
+)
+
+private val dateFormatter = DateTimeFormatterBuilder()
+    .parseCaseInsensitive()
+    .appendValue(ChronoField.DAY_OF_MONTH, 2)
+    .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+    .appendValue(ChronoField.YEAR, 4)
+    .optionalStart()
+    .parseLenient()
+    .appendOffset("+HHMMss", "Z")
+    .parseStrict()
+    .toFormatter()
+
 @ExperimentalTime
 fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResultatResponse> {
-    val formatter = DateTimeFormatterBuilder()
-        .parseCaseInsensitive()
-        .appendValue(ChronoField.DAY_OF_MONTH, 2)
-        .appendValue(ChronoField.MONTH_OF_YEAR, 2)
-        .appendValue(ChronoField.YEAR, 4)
-        .optionalStart()
-        .parseLenient()
-        .appendOffset("+HHMMss", "Z")
-        .parseStrict()
-        .toFormatter()
-
     val results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
@@ -343,7 +382,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
             try {
                 var parsedVedtaksDate: LocalDate? = null
-                if (vedtaksDate != null && vedtaksDate != "0") parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
+                if (vedtaksDate != null && vedtaksDate != "0") parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, dateFormatter)
                 if (vedtaksResult != null && vedtaksResult == "  ") vedtaksResult = ""
 
                 results.add(VedtakResultatResponse(req, vedtaksResult, parsedVedtaksDate, error, elapsed.inMilliseconds))
@@ -360,4 +399,33 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
         }
     }
     return results.toTypedArray()
+}
+
+@ExperimentalTime
+fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
+    var result = HarVedtakForResponse(false)
+    getPreparedStatementHasDecisionFor().use { pstmt ->
+        // Check if request looks right
+        if (req.fnr.length != 11) logg.error("error: request has a fnr of length: ${req.fnr.length} != 11")
+        if (req.saksblokk.length != 1) logg.error("error: request has an saksblokk of length: ${req.saksblokk.length} != 1")
+        if (req.saksnr.length != 2) logg.error("error: request has an saksnr of length: ${req.saksnr.length} != 2")
+
+        val vedtaksDato = req.vedtaksDato.format(dateFormatter)
+        logg.info("DEBUG HERE: innkommende vedtaksdato=${req.vedtaksDato}, formattert om til: $vedtaksDato")
+
+        val fnr = "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
+
+        // Look up the request in the Infotrygd replication database
+        pstmt.clearParameters()
+        pstmt.setString(1, vedtaksDato)     // S10_VEDTAKSDATO
+        pstmt.setString(2, fnr)             // F_NR
+        pstmt.setString(3, req.saksblokk)   // S05_SAKSBLOKK
+        pstmt.setString(4, req.saksnr)      // S10_SAKSNR
+        pstmt.executeQuery().use { rs ->
+            if (rs.next()) {
+                result = HarVedtakForResponse(true)
+            }
+        }
+    }
+    return result
 }
