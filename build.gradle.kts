@@ -12,6 +12,7 @@ val ojdbc_version: String by project
 val ktor_version: String by project
 val unleash_version: String by project
 val prometheus_version: String by project
+val jackson_version: String by project
 
 group = "no.nav.hjelpemidler"
 version = "1.0-SNAPSHOT"
@@ -40,6 +41,7 @@ dependencies {
     implementation("io.ktor:ktor-auth:$ktor_version")
     implementation("io.ktor:ktor-auth-jwt:$ktor_version")
     implementation("io.ktor:ktor-jackson:$ktor_version")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jackson_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("junit:junit:4.12")
     implementation("org.junit.jupiter:junit-jupiter:5.4.2")
