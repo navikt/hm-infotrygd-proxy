@@ -232,19 +232,19 @@ fun Application.module() {
                     return@post
                 }
             }
-        }
-        get("/har-vedtak-for") {
-            try {
-                val req = call.receive<HarVedtakForRequest>()
-                logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}), saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato}")
-                val res = withRetryIfDatabaseConnectionIsStale {
-                    queryForDecision(req)
-                }
-                call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
+            get("/har-vedtak-for") {
+                try {
+                    val req = call.receive<HarVedtakForRequest>()
+                    logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}), saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato}")
+                    val res = withRetryIfDatabaseConnectionIsStale {
+                        queryForDecision(req)
+                    }
+                    call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
 
-            }catch(e: Exception) {
-                call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
-                return@get
+                }catch(e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                    return@get
+                }
             }
         }
     }
@@ -413,8 +413,6 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
         if (req.saksnr.length != 2) logg.error("error: request has an saksnr of length: ${req.saksnr.length} != 2")
 
         val vedtaksDato = req.vedtaksDato.format(dateFormatter)
-        logg.info("DEBUG HERE: innkommende vedtaksdato=${req.vedtaksDato}, formattert om til: $vedtaksDato")
-
         val fnr = "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
 
         // Look up the request in the Infotrygd replication database
