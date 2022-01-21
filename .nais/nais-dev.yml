@@ -39,3 +39,6 @@ spec:
         - application: hm-infotrygd-poller
           namespace: teamdigihot
           cluster: dev-gcp
+        - application: hm-soknadsbehandling
+          namespace: teamdigihot
+          cluster: dev-gcp
