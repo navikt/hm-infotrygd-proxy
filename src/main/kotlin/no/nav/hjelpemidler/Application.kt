@@ -239,6 +239,8 @@ fun Application.module() {
 
                 }catch(e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                    logg.error("Exception thrown during processing: $e")
+                    e.printStackTrace()
                     return@post
                 }
             }
@@ -253,6 +255,8 @@ fun Application.module() {
 
                 }catch(e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                    logg.error("Exception thrown during processing: $e")
+                    e.printStackTrace()
                     return@get
                 }
             }
