@@ -1,6 +1,5 @@
 package no.nav.hjelpemidler
 
-import com.beust.klaxon.Klaxon
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -234,7 +233,7 @@ fun Application.module() {
                         queryForDecisionResult(reqs)
                     }
 
-                    call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
+                    call.respond(res)
 
                 }catch(e: Exception) {
                     logg.error("Exception thrown during processing: $e")
