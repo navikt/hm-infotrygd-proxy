@@ -37,7 +37,6 @@ import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.common.TextFormat
-import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import no.nav.hjelpemidler.configuration.Configuration
 import no.nav.hjelpemidler.metrics.Prometheus
@@ -238,27 +237,27 @@ fun Application.module() {
                     call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
 
                 }catch(e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
                     logg.error("Exception thrown during processing: $e")
                     e.printStackTrace()
+                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
                     return@post
                 }
             }
-            get("/har-vedtak-for") {
-                try {
-                    val req = call.receive<HarVedtakForRequest>()
-                    logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}), saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato}")
-                    val res = withRetryIfDatabaseConnectionIsStale {
-                        queryForDecision(req)
-                    }
-                    call.respondText(Klaxon().toJsonString(res), ContentType.Application.Json, HttpStatusCode.OK)
-
-                }catch(e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
-                    logg.error("Exception thrown during processing: $e")
-                    e.printStackTrace()
-                    return@get
+        }
+        post("/har-vedtak-for") {
+            try {
+                val req = call.receive<HarVedtakForRequest>()
+                logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}), saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato}")
+                val res = withRetryIfDatabaseConnectionIsStale {
+                    queryForDecision(req)
                 }
+                call.respond(res)
+
+            }catch(e: Exception) {
+                logg.error("Exception thrown during processing: $e")
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                return@post
             }
         }
     }
@@ -419,6 +418,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
 @ExperimentalTime
 fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
+    logg.info("DEBUG: HERE0")
     var result = HarVedtakForResponse(false)
     getPreparedStatementHasDecisionFor().use { pstmt ->
         // Check if request looks right
@@ -429,6 +429,8 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
         val vedtaksDato = req.vedtaksDato.format(dateFormatter)
         val fnr = "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
 
+        logg.info("DEBUG: HERE1")
+
         // Look up the request in the Infotrygd replication database
         pstmt.clearParameters()
         pstmt.setString(1, vedtaksDato)     // S10_VEDTAKSDATO
@@ -437,6 +439,7 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
         pstmt.setString(4, req.saksnr)      // S10_SAKSNR
         pstmt.executeQuery().use { rs ->
             if (rs.next()) {
+                logg.info("DEBUG: HERE2")
                 result = HarVedtakForResponse(true)
             }
         }
