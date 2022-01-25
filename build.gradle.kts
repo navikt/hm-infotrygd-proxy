@@ -7,7 +7,6 @@ plugins {
 val logging_version: String by project
 val logback_version: String by project
 val konfig_version: String by project
-val klaxon_version: String by project
 val ojdbc_version: String by project
 val ktor_version: String by project
 val unleash_version: String by project
@@ -29,7 +28,6 @@ dependencies {
 
     implementation("io.github.microutils:kotlin-logging:$logging_version")
     implementation("com.natpryce:konfig:$konfig_version")
-    implementation("com.beust:klaxon:$klaxon_version")
     implementation("com.oracle.database.jdbc:ojdbc8:$ojdbc_version")
     implementation("io.ktor:ktor-server-netty:$ktor_version")
     implementation("io.ktor:ktor-client-core:$ktor_version")
