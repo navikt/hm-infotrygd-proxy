@@ -235,28 +235,28 @@ fun Application.module() {
 
                     call.respond(res)
 
-                }catch(e: Exception) {
+                } catch(e: Exception) {
                     logg.error("Exception thrown during processing: $e")
                     e.printStackTrace()
                     call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
                     return@post
                 }
             }
-        }
-        post("/har-vedtak-for") {
-            try {
-                val req = call.receive<HarVedtakForRequest>()
-                logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}), saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato}")
-                val res = withRetryIfDatabaseConnectionIsStale {
-                    queryForDecision(req)
-                }
-                call.respond(res)
+            post("/har-vedtak-for") {
+                try {
+                    val req = call.receive<HarVedtakForRequest>()
+                    logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}, saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato})")
+                    val res = withRetryIfDatabaseConnectionIsStale {
+                        queryForDecision(req)
+                    }
+                    call.respond(res)
 
-            }catch(e: Exception) {
-                logg.error("Exception thrown during processing: $e")
-                e.printStackTrace()
-                call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
-                return@post
+                } catch(e: Exception) {
+                    logg.error("Exception thrown during processing: $e")
+                    e.printStackTrace()
+                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                    return@post
+                }
             }
         }
     }
@@ -417,7 +417,6 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
 @ExperimentalTime
 fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
-    logg.info("DEBUG: HERE0")
     var result = HarVedtakForResponse(false)
     getPreparedStatementHasDecisionFor().use { pstmt ->
         // Check if request looks right
@@ -428,8 +427,6 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
         val vedtaksDato = req.vedtaksDato.format(dateFormatter)
         val fnr = "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
 
-        logg.info("DEBUG: HERE1")
-
         // Look up the request in the Infotrygd replication database
         pstmt.clearParameters()
         pstmt.setString(1, vedtaksDato)     // S10_VEDTAKSDATO
@@ -438,7 +435,6 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
         pstmt.setString(4, req.saksnr)      // S10_SAKSNR
         pstmt.executeQuery().use { rs ->
             if (rs.next()) {
-                logg.info("DEBUG: HERE2")
                 result = HarVedtakForResponse(true)
             }
         }
