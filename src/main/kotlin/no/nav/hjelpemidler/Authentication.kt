@@ -3,13 +3,16 @@ package no.nav.hjelpemidler
 import com.auth0.jwk.JwkProviderBuilder
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.auth.jwt.*
-import io.ktor.client.*
-import io.ktor.client.engine.apache.*
+import io.ktor.application.Application
+import io.ktor.application.install
+import io.ktor.auth.Authentication
+import io.ktor.auth.jwt.JWTPrincipal
+import io.ktor.auth.jwt.jwt
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.apache.Apache
+import io.ktor.client.features.json.JacksonSerializer
+import io.ktor.client.features.json.JsonFeature
 import io.ktor.client.request.get
-import io.ktor.client.features.json.*
 import kotlinx.coroutines.runBlocking
 import no.nav.hjelpemidler.configuration.Configuration
 import org.apache.http.impl.conn.SystemDefaultRoutePlanner
@@ -30,7 +33,7 @@ private fun httpClientWithProxy() = HttpClient(Apache) {
 
 fun Application.installAuthentication() {
     // Load Azure AD config for rest client authentication
-    var aadConfig: AzureAdConfig? = null
+    var aadConfig: AzureAdConfig?
     runBlocking {
         aadConfig = AzureAdConfig(
             metadata = httpClientWithProxy().get(Configuration.azureAD["AZURE_APP_WELL_KNOWN_URL"]!!),

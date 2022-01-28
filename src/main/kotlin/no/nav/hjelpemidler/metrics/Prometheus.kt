@@ -4,9 +4,9 @@ import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.Gauge
 
 internal object Prometheus {
-    val collectorRegistry = CollectorRegistry.defaultRegistry
+    private val collectorRegistry: CollectorRegistry = CollectorRegistry.defaultRegistry
 
-    val infotrygdDbAvailable = Gauge
+    val infotrygdDbAvailable: Gauge = Gauge
         .build()
         .name("hm_infotrygd_proxy_infotrygd_db_available")
         .help("Infotrygd replika-database tilgjengelig")

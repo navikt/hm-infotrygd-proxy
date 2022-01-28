@@ -23,7 +23,6 @@ import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.routing
 import io.ktor.server.netty.EngineMain
-import io.ktor.util.KtorExperimentalAPI
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
@@ -86,8 +85,10 @@ fun connectToInfotrygdDB() {
 
         // Set up database connection
         val info = Properties()
-        info[OracleConnection.CONNECTION_PROPERTY_USER_NAME] = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]!!
-        info[OracleConnection.CONNECTION_PROPERTY_PASSWORD] = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_PW"]!!
+        info[OracleConnection.CONNECTION_PROPERTY_USER_NAME] =
+            Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]!!
+        info[OracleConnection.CONNECTION_PROPERTY_PASSWORD] =
+            Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_PW"]!!
         info[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
 
         val ods = OracleDataSource()
@@ -95,7 +96,7 @@ fun connectToInfotrygdDB() {
         ods.connectionProperties = info
 
         logg.info("Connecting to database")
-        dbConnection = ods.getConnection()
+        dbConnection = ods.connection
 
         logg.info("Fetching db metadata")
         val dbmd = dbConnection!!.metaData
@@ -105,7 +106,7 @@ fun connectToInfotrygdDB() {
         logg.info("Database connected, hm-infotrygd-proxy ready")
         ready.set(true)
 
-    }catch(e: Exception) {
+    } catch (e: Exception) {
         logg.info("Exception while connecting to database: $e")
         e.printStackTrace()
         throw e
@@ -118,7 +119,7 @@ fun <T> withRetryIfDatabaseConnectionIsStale(block: () -> T): T {
     for (attempt in 1..3) { // We get three attempts
         try {
             return block() // Success
-        }catch(e: SQLException) {
+        } catch (e: SQLException) {
             lastException = e
             if (e.toString().contains("ORA-02399")) {
                 logg.warn("Infotrygd replication database closed the connection due to their connection-max-life deadline, we reconnect and try again: $e")
@@ -128,13 +129,11 @@ fun <T> withRetryIfDatabaseConnectionIsStale(block: () -> T): T {
             throw e // Unhandled sql error, we throw up
         }
     }
-    throw lastException!! // No more attempts so we throw the last exception we had
+    throw lastException!! // No more attempts, so we throw the last exception we had
 }
 
 @ExperimentalTime
-@KtorExperimentalAPI
 @Suppress("unused") // Referenced in application.conf
-@kotlin.jvm.JvmOverloads
 fun Application.module() {
     installAuthentication()
 
@@ -154,8 +153,8 @@ fun Application.module() {
         level = Level.TRACE
         filter { call ->
             !call.request.path().startsWith("/internal") &&
-            !call.request.path().startsWith("/isalive") &&
-            !call.request.path().startsWith("/isready")
+                    !call.request.path().startsWith("/isalive") &&
+                    !call.request.path().startsWith("/isready")
         }
     }
 
@@ -172,7 +171,7 @@ fun Application.module() {
             ProcessorMetrics(),
             JvmThreadMetrics(),
             LogbackMetrics(),
-            KafkaConsumerMetrics()
+            KafkaConsumerMetrics(),
         )
     }
 
@@ -181,7 +180,7 @@ fun Application.module() {
 
         get("/isalive") {
             // If we have gotten ready=true we check that dbConnection is still valid, or else we are ALIVE (so we don't get our pod restarted during startup)
-            if (ready.get() ) {
+            if (ready.get()) {
                 val dbValid = dbConnection!!.isValid(10)
                 if (!dbValid) {
                     Prometheus.infotrygdDbAvailable.set(0.0)
@@ -193,7 +192,9 @@ fun Application.module() {
         }
 
         get("/isready") {
-            if (!ready.get()) return@get call.respondText("NOT READY", ContentType.Text.Plain, HttpStatusCode.ServiceUnavailable)
+            if (!ready.get()) return@get call.respondText("NOT READY",
+                ContentType.Text.Plain,
+                HttpStatusCode.ServiceUnavailable)
             call.respondText("READY", ContentType.Text.Plain)
         }
 
@@ -235,7 +236,7 @@ fun Application.module() {
 
                     call.respond(res)
 
-                } catch(e: Exception) {
+                } catch (e: Exception) {
                     logg.error("Exception thrown during processing: $e")
                     e.printStackTrace()
                     call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
@@ -251,7 +252,7 @@ fun Application.module() {
                     }
                     call.respond(res)
 
-                } catch(e: Exception) {
+                } catch (e: Exception) {
                     logg.error("Exception thrown during processing: $e")
                     e.printStackTrace()
                     call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
@@ -310,22 +311,22 @@ data class VedtakResultatRequest(
     val saksnr: String,
 )
 
-data class VedtakResultatResponse (
+data class VedtakResultatResponse(
     val req: VedtakResultatRequest,
     val vedtaksResult: String?,
     val vedtaksDate: LocalDate?,
     val error: String?,
-    val queryTimeElapsedMs: Double,
+    val queryTimeElapsedMs: Long,
 )
 
-data class HarVedtakForRequest (
+data class HarVedtakForRequest(
     val fnr: String,
     val saksblokk: String,
     val saksnr: String,
     val vedtaksDato: LocalDate,
 )
 
-data class HarVedtakForResponse (
+data class HarVedtakForResponse(
     val resultat: Boolean,
 )
 
@@ -351,7 +352,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
             if (req.saksblokk.length != 1) logg.error("error: request with id=${req.id} has an saksblokk of length: ${req.saksblokk.length} != 1")
             if (req.saksnr.length != 2) logg.error("error: request with id=${req.id} has an saksnr of length: ${req.saksnr.length} != 2")
 
-            val fnr = "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
+            val fnr =
+                "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
 
             // Look up the request in the Infotrygd replication database
             var foundResult = false
@@ -367,13 +369,15 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 pstmt.executeQuery().use { rs ->
                     while (rs.next()) {
                         if (foundResult) {
-                            error = "we found multiple results for query, this is not supported" // Multiple results not supported
+                            error =
+                                "we found multiple results for query, this is not supported" // Multiple results not supported
                             break
-                        }else{
+                        } else {
                             foundResult = true
                             vedtaksResult = rs.getString("S10_RESULTAT").trim()
                             vedtaksDate = rs.getString("S10_VEDTAKSDATO").trim()
-                            if (vedtaksDate!!.length == 7) vedtaksDate = "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
+                            if (vedtaksDate!!.length == 7) vedtaksDate =
+                                "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
                         }
                     }
                 }
@@ -388,7 +392,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     pstmt2.setString(2, fnr)             // F_NR
                     pstmt2.executeQuery().use { rs ->
                         if (rs.next()) {
-                            error += "; however personKey has rows in the table: #" + rs.getInt("number_of_rows").toString()
+                            error += "; however personKey has rows in the table: #" + rs.getInt("number_of_rows")
+                                .toString()
                         }
                     }
                 }
@@ -396,10 +401,17 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
             try {
                 var parsedVedtaksDate: LocalDate? = null
-                if (vedtaksDate != null && vedtaksDate != "0") parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, dateFormatter)
+                if (vedtaksDate != null && vedtaksDate != "0") parsedVedtaksDate =
+                    LocalDate.parse(vedtaksDate!!, dateFormatter)
                 if (vedtaksResult != null && vedtaksResult == "  ") vedtaksResult = ""
 
-                results.add(VedtakResultatResponse(req, vedtaksResult, parsedVedtaksDate, error, elapsed.inMilliseconds))
+                results.add(VedtakResultatResponse(
+                    req,
+                    vedtaksResult,
+                    parsedVedtaksDate,
+                    error,
+                    elapsed.inWholeMilliseconds
+                ))
 
             } catch (e: Exception) {
                 val err = "error: could not parse vedtaksDate=$vedtaksDate: $e"
@@ -408,7 +420,13 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 logg.error(error)
                 e.printStackTrace()
 
-                results.add(VedtakResultatResponse(req, vedtaksResult, null, error, elapsed.inMilliseconds))
+                results.add(VedtakResultatResponse(
+                    req,
+                    vedtaksResult,
+                    null,
+                    error,
+                    elapsed.inWholeMilliseconds
+                ))
             }
         }
     }
@@ -425,7 +443,8 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
         if (req.saksnr.length != 2) logg.error("error: request has an saksnr of length: ${req.saksnr.length} != 2")
 
         val vedtaksDato = req.vedtaksDato.format(dateFormatter)
-        val fnr = "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
+        val fnr =
+            "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
 
         // Look up the request in the Infotrygd replication database
         pstmt.clearParameters()
