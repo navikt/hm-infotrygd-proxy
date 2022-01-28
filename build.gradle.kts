@@ -19,8 +19,6 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
-    maven("https://jitpack.io") // Used for Rapids and rivers-dependency
-    maven("https://packages.confluent.io/maven/") // Kafka-avro
 }
 
 fun ktor(name: String) = "io.ktor:ktor-$name:$ktor_version"
