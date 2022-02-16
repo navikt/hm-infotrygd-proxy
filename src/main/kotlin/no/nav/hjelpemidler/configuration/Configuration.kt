@@ -19,18 +19,24 @@ internal object Configuration {
 
     private val prodProperties = ConfigurationMap(
         mapOf(
+            "APPLICATION_PROFILE" to "prod",
+
             "HM_INFOTRYGD_PROXY_DB_NAME" to "INFOTRYGD_P",
         )
     )
 
     private val devProperties = ConfigurationMap(
         mapOf(
+            "APPLICATION_PROFILE" to "dev",
+
             "HM_INFOTRYGD_PROXY_DB_NAME" to "INFOTRYGD_HJQ",
         )
     )
 
     private val localProperties = ConfigurationMap(
         mapOf(
+            "APPLICATION_PROFILE" to "local",
+
             "HM_INFOTRYGD_PROXY_DB_URL" to "abc",
             "HM_INFOTRYGD_PROXY_DB_USR" to "abc",
             "HM_INFOTRYGD_PROXY_DB_PW" to "abc",
@@ -39,6 +45,10 @@ internal object Configuration {
             "AZURE_APP_WELL_KNOWN_URL" to "abc",
             "AZURE_APP_CLIENT_ID" to "abc",
         )
+    )
+
+    val application: Map<String, String> = mapOf(
+        "APPLICATION_PROFILE" to config()[Key("APPLICATION_PROFILE", stringType)],
     )
 
     val oracleDatabaseConfig: Map<String, String> = mapOf(

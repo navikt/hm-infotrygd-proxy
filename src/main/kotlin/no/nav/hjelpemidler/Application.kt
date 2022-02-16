@@ -247,9 +247,16 @@ fun Application.module() {
                 try {
                     val req = call.receive<HarVedtakForRequest>()
                     logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}, saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato})")
+
                     val res = withRetryIfDatabaseConnectionIsStale {
                         queryForDecision(req)
                     }
+
+                    // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
+                    if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
+                        res.resultat = true
+                    }
+
                     call.respond(res)
 
                 } catch (e: Exception) {
@@ -327,7 +334,7 @@ data class HarVedtakForRequest(
 )
 
 data class HarVedtakForResponse(
-    val resultat: Boolean,
+    var resultat: Boolean,
 )
 
 private val dateFormatter = DateTimeFormatterBuilder()
