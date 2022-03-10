@@ -526,7 +526,7 @@ fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResp
 
         // Look up the request in the Infotrygd replication database
         pstmt.clearParameters()
-        pstmt.setString(2, fnr)             // F_NR
+        pstmt.setString(1, fnr)             // F_NR
         pstmt.executeQuery().use { rs ->
             if (rs.next()) {
                 result = HarVedtakFraFørResponse(true)
