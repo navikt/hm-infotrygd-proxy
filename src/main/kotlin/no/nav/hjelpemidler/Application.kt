@@ -266,6 +266,30 @@ fun Application.module() {
                     return@post
                 }
             }
+
+            post("/har-vedtak-fra-for") {
+                try {
+                    val req = call.receive<HarVedtakFraFørRequest>()
+                    logg.info("Incoming authenticated request for /har-vedtak-fra-for (fnr=MASKED)")
+
+                    val res = withRetryIfDatabaseConnectionIsStale {
+                        queryForHarVedtakFraFør(req)
+                    }
+
+                    // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
+                    if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
+                        //res.harVedtakFraFør = true
+                    }
+
+                    call.respond(res)
+
+                } catch (e: Exception) {
+                    logg.error("Exception thrown during processing: $e")
+                    e.printStackTrace()
+                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                    return@post
+                }
+            }
         }
     }
 }
@@ -310,6 +334,20 @@ fun getPreparedStatementHasDecisionFor(): PreparedStatement {
     return dbConnection!!.prepareStatement(query)
 }
 
+fun getPreparedStatementHarVedtakFraFør(): PreparedStatement {
+    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
+    // even if we are connected to the production db: INFOTRYGD_P
+    val query =
+        """
+            SELECT 1
+            FROM SA_SAK_10
+            WHERE F_NR = ?
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+        """.trimIndent().split("\n").joinToString(" ")
+    logg.info("DEBUG: SQL query being prepared: $query")
+    return dbConnection!!.prepareStatement(query)
+}
+
 data class VedtakResultatRequest(
     val id: String,
     val tknr: String,
@@ -335,6 +373,14 @@ data class HarVedtakForRequest(
 
 data class HarVedtakForResponse(
     var resultat: Boolean,
+)
+
+data class HarVedtakFraFørRequest(
+    val fnr: String
+)
+
+data class HarVedtakFraFørResponse(
+    val harVedtakFraFør: Boolean
 )
 
 private val dateFormatter = DateTimeFormatterBuilder()
@@ -467,3 +513,26 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
     }
     return result
 }
+
+@ExperimentalTime
+fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResponse {
+    var result = HarVedtakFraFørResponse(false)
+    getPreparedStatementHarVedtakFraFør().use { pstmt ->
+        // Check if request looks right
+        if (req.fnr.length != 11) logg.error("error: request has a fnr of length: ${req.fnr.length} != 11")
+
+        val fnr =
+            "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
+
+        // Look up the request in the Infotrygd replication database
+        pstmt.clearParameters()
+        pstmt.setString(1, fnr)             // F_NR
+        pstmt.executeQuery().use { rs ->
+            if (rs.next()) {
+                result = HarVedtakFraFørResponse(true)
+            }
+        }
+    }
+    return result
+}
+

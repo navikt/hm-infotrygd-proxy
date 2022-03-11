@@ -8,6 +8,7 @@ on:
       - "CODEOWNERS"
     branches:
       - main
+      - DIGIHOT-720_2/har-vedtak-fra-for
 env:
   docker_image: docker.pkg.github.com/${{ github.repository }}/hm-infotrygd-proxy:${{ github.sha }}
 jobs:

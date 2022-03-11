@@ -42,3 +42,6 @@ spec:
         - application: hm-soknadsbehandling
           namespace: teamdigihot
           cluster: dev-gcp
+        - application: hm-bestillingsordning-river
+          namespace: teamdigihot
+          cluster: dev-gcp
