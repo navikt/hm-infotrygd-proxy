@@ -45,3 +45,6 @@ spec:
         - application: hm-bestillingsordning-river
           namespace: teamdigihot
           cluster: prod-gcp
+        - application: hm-bestillingsordning-sjekker
+          namespace: teamdigihot
+          cluster: prod-gcp
