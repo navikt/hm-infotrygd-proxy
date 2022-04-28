@@ -445,7 +445,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     pstmt2.setString(2, fnr)             // F_NR
                     pstmt2.executeQuery().use { rs ->
                         if (rs.next()) {
-                            error += "; however personKey has rows in the table: #" + rs.getInt("number_of_rows")
+                            val numberOfRows = rs.getInt("number_of_rows")
+                            if (numberOfRows > 0) error += "; however personKey has rows in the table: #" + numberOfRows
                                 .toString()
                         }
                     }
