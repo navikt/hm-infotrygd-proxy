@@ -41,6 +41,8 @@ import no.nav.hjelpemidler.metrics.Prometheus
 import oracle.jdbc.OracleConnection
 import oracle.jdbc.pool.OracleDataSource
 import org.slf4j.event.Level
+import java.math.BigInteger
+import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.SQLException
@@ -437,7 +439,21 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
             }
 
             if (!foundResult) {
-                error = "no such vedtak in the database"
+                val hashedIdent = req.fnr.let { input ->
+                    val md: MessageDigest = MessageDigest.getInstance("SHA-512")
+                    val messageDigest = md.digest(input.toByteArray())
+                    // Convert byte array into signum representation
+                    val no = BigInteger(1, messageDigest)
+                    // Convert message digest into hex value
+                    var hashtext: String = no.toString(16)
+                    // Add preceding 0s to make it 128 chars long
+                    while (hashtext.length < 128) {
+                        hashtext = "0$hashtext"
+                    }
+                    hashtext
+                }
+
+                error = "no such vedtak in the database (tknr=${req.tknr}, saksblokk=${req.saksblokk}, saksnr=${req.saksnr}, hashedIdent=${hashedIdent})"
 
                 getPreparedStatementDoesPersonkeyExist().use { pstmt2 ->
                     pstmt2.clearParameters()
