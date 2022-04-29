@@ -37,6 +37,8 @@ import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.common.TextFormat
 import mu.KotlinLogging
 import no.nav.hjelpemidler.configuration.Configuration
+import no.nav.hjelpemidler.domain.Fødselsnummer
+import no.nav.hjelpemidler.domain.tilInfotrygdFormat
 import no.nav.hjelpemidler.metrics.Prometheus
 import oracle.jdbc.OracleConnection
 import oracle.jdbc.pool.OracleDataSource
@@ -192,9 +194,11 @@ fun Application.module() {
         }
 
         get("/isready") {
-            if (!ready.get()) return@get call.respondText("NOT READY",
+            if (!ready.get()) return@get call.respondText(
+                "NOT READY",
                 ContentType.Text.Plain,
-                HttpStatusCode.ServiceUnavailable)
+                HttpStatusCode.ServiceUnavailable
+            )
             call.respondText("READY", ContentType.Text.Plain)
         }
 
@@ -290,6 +294,29 @@ fun Application.module() {
                     return@post
                 }
             }
+
+            post("/hent-saker-for-bruker") {
+                try {
+                    val req = call.receive<HentSakerForBrukerRequest>()
+                    logg.info("Incoming authenticated request for /hent-saker-for-bruker")
+
+                    val res = withRetryIfDatabaseConnectionIsStale {
+                        queryForHentSakerForBruker(req)
+                    }
+
+                    // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
+                    //if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
+                      //  res.resultat = true
+                    //}
+
+                    call.respond(res)
+
+                } catch (e: Exception) {
+                    logg.error(e){"Feil med henting av saker for bruker"}
+                    call.respond(HttpStatusCode.InternalServerError, "Feil med henting av saker for bruker: $e")
+                    return@post
+                }
+            }
         }
     }
 }
@@ -348,6 +375,37 @@ fun getPreparedStatementHarVedtakFraFør(): PreparedStatement {
     return dbConnection!!.prepareStatement(query)
 }
 
+fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
+    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
+    // even if we are connected to the production db: INFOTRYGD_P
+    val query =
+        """
+            SELECT 
+                SA_SAK_10.F_NR, 
+                S10_VEDTAKSDATO, 
+                S10_RESULTAT, 
+                S10_MOTTATTDATO, 
+                S10_KAPITTELNR, 
+                S10_VALG, 
+                S10_UNDERVALG, 
+                S10_SAKSNR, 
+                SA_SAK_10.S05_SAKSBLOKK,  
+                S05_BRUKERID, 
+                S20_OPPLYSNING   
+            FROM 
+                SA_SAK_10, 
+                SA_SAKSBLOKK_05, 
+                SA_HENDELSE_20
+            WHERE 
+                SA_SAK_10.F_NR = 48041423897
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            AND SA_SAK_10.S01_PERSONKEY = SA_SAKSBLOKK_05.S01_PERSONKEY 
+            AND SA_SAK_10.S01_PERSONKEY = SA_HENDELSE_20.S01_PERSONKEY
+        """.trimIndent().split("\n").joinToString(" ")
+    logg.info("DEBUG: SQL query being prepared: $query")
+    return dbConnection!!.prepareStatement(query)
+}
+
 data class VedtakResultatRequest(
     val id: String,
     val tknr: String,
@@ -382,6 +440,23 @@ data class HarVedtakFraFørRequest(
 data class HarVedtakFraFørResponse(
     val harVedtakFraFør: Boolean
 )
+
+data class HentSakerForBrukerRequest(
+    val fnr: String
+)
+
+data class SakerForBrukerResponse(
+    val mottattDato: LocalDate?,
+    val sakGjelder: List<String>,
+    val saksblokk: String?,
+    val saksnummer: String?,
+    val saksbehandler: String?,
+    val opplysning: String?,
+    val vedtaksResultat: String?,
+    val vedtaksDato: LocalDate?,
+    val error: String? = null,
+)
+
 
 private val dateFormatter = DateTimeFormatterBuilder()
     .parseCaseInsensitive()
@@ -458,13 +533,15 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     LocalDate.parse(vedtaksDate!!, dateFormatter)
                 if (vedtaksResult != null && vedtaksResult == "  ") vedtaksResult = ""
 
-                results.add(VedtakResultatResponse(
-                    req,
-                    vedtaksResult,
-                    parsedVedtaksDate,
-                    error,
-                    elapsed.inWholeMilliseconds
-                ))
+                results.add(
+                    VedtakResultatResponse(
+                        req,
+                        vedtaksResult,
+                        parsedVedtaksDate,
+                        error,
+                        elapsed.inWholeMilliseconds
+                    )
+                )
 
             } catch (e: Exception) {
                 val err = "error: could not parse vedtaksDate=$vedtaksDate: $e"
@@ -473,13 +550,15 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 logg.error(error)
                 e.printStackTrace()
 
-                results.add(VedtakResultatResponse(
-                    req,
-                    vedtaksResult,
-                    null,
-                    error,
-                    elapsed.inWholeMilliseconds
-                ))
+                results.add(
+                    VedtakResultatResponse(
+                        req,
+                        vedtaksResult,
+                        null,
+                        error,
+                        elapsed.inWholeMilliseconds
+                    )
+                )
             }
         }
     }
@@ -514,6 +593,7 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
     return result
 }
 
+
 @ExperimentalTime
 fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResponse {
     var result = HarVedtakFraFørResponse(false)
@@ -535,4 +615,50 @@ fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResp
     }
     return result
 }
+
+
+@ExperimentalTime
+fun queryForHentSakerForBruker(req: HentSakerForBrukerRequest): List<SakerForBrukerResponse> {
+    val saker: MutableList<SakerForBrukerResponse> = mutableListOf()
+    getPreparedStatementHentSakerForBruker().use { pstmt ->
+        val fnr = Fødselsnummer(req.fnr)
+
+        pstmt.clearParameters()
+        pstmt.setString(1, fnr.tilInfotrygdFormat())
+        pstmt.executeQuery().use { rs ->
+            if (rs.next()) {
+                try {
+                    val vedtaksResult = rs.getString("S10_RESULTAT")?.trim()
+                    val vedtaksDate = rs.getString("S10_VEDTAKSDATO")?.trim()
+                    val mottattDato = rs.getString("S10_MOTTATTDATO")
+                    val sakGjelder = listOf<String>(
+                        rs.getString("S10_KAPITTELNR"),
+                        rs.getString("S10_VALG"),
+                        rs.getString("S10_UNDERVALG")
+                    )
+                    val saksblokk = rs.getString("SA_SAK_10.S05_SAKSBLOKK")
+                    val saksNummer = rs.getString("S10_SAKSNR")
+                    val brukerID = rs.getString("S05_BRUKERID")
+                    val opplysning = rs.getString("S20_OPPLYSNING")
+
+                    val sak = SakerForBrukerResponse(
+                        mottattDato = mottattDato?.let { LocalDate.parse(it, dateFormatter) },
+                        sakGjelder = sakGjelder,
+                        saksblokk = saksblokk,
+                        saksnummer = saksNummer,
+                        saksbehandler = brukerID,
+                        opplysning = opplysning,
+                        vedtaksResultat = vedtaksResult,
+                        vedtaksDato = vedtaksDate?.let { LocalDate.parse(it, dateFormatter) })
+
+                    saker.add(sak)
+                } catch (e: Exception) {
+                    logg.error(e){"Feil med parsing av sak for bruker"}
+                }
+            }
+        }
+    }
+    return saker
+}
+
 

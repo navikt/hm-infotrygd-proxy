@@ -48,3 +48,6 @@ spec:
         - application: hm-bestillingsordning-sjekker
           namespace: teamdigihot
           cluster: dev-gcp
+        - application: hm-saksbehandling
+          namespace: teamdigihot
+          cluster: dev-gcp
