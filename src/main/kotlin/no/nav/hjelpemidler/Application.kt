@@ -495,7 +495,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
         for (req in reqs) {
 
             // Check if request looks right
-            if (req.fnr.length != 11) {
+            if (req.fnr.strip().length != 11) {
                 val error = "error: request with id=${req.id} has a fnr of length: ${req.fnr.length} != 11"
                 logg.error(error)
                 results.add(
@@ -509,8 +509,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 )
                 continue // Skip further handling of this request
             }
-            if (req.tknr.length != 4) {
-                val error = "error: request with id=${req.id} has a tknr of length: ${req.tknr.length} != 4"
+            if (req.tknr.strip().length != 4) {
+                val error = "error: request with id=${req.id} has a tknr of length: ${req.tknr.strip().length} != 4"
                 logg.error(error)
                 results.add(
                     VedtakResultatResponse(
@@ -546,7 +546,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
                 continue // Skip further handling of this request
             }
-            if (req.saksblokk.length !=1) {
+            if (req.saksblokk.strip().length !=1) {
                 val error = "error: request with id=${req.id} has an saksblokk of length: ${req.saksblokk.length} != 1"
                 logg.error(error)
                 results.add(
@@ -560,7 +560,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 )
                 continue // Skip further handling of this request
             }
-            if (req.saksnr.length != 2) {
+            if (req.saksnr.strip().length != 2) {
                 val error = "error: request with id=${req.id} has an saksnr of length: ${req.saksnr.length} != 2"
                 logg.error(error)
                 results.add(
