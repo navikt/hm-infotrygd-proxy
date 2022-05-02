@@ -408,6 +408,23 @@ fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
     return dbConnection!!.prepareStatement(query)
 }
 
+// FIXME: Remove again once we have what we need
+fun getPreparedStatementFindTKNRForFaultyVedtakResultatRequest(): PreparedStatement {
+    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
+    // even if we are connected to the production db: INFOTRYGD_P
+    val query =
+        """
+            SELECT TK_NR, OPPRETTET, OPPDATERT
+            FROM SA_SAK_10
+            WHERE F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            ORDER BY OPPRETTET DESC
+            LIMIT 1
+        """.trimIndent().split("\n").joinToString(" ")
+    logg.info("DEBUG: SQL query being prepared: $query")
+    return dbConnection!!.prepareStatement(query)
+}
+
 data class VedtakResultatRequest(
     val id: String,
     val tknr: String,
@@ -476,11 +493,87 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     val results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
+
             // Check if request looks right
-            if (req.fnr.length != 11) logg.error("error: request with id=${req.id} has a fnr of length: ${req.fnr.length} != 11")
-            if (req.tknr.length != 4) logg.error("error: request with id=${req.id} has a tknr of length: ${req.tknr.length} != 4")
-            if (req.saksblokk.length != 1) logg.error("error: request with id=${req.id} has an saksblokk of length: ${req.saksblokk.length} != 1")
-            if (req.saksnr.length != 2) logg.error("error: request with id=${req.id} has an saksnr of length: ${req.saksnr.length} != 2")
+            if (req.fnr.length != 11) {
+                val error = "error: request with id=${req.id} has a fnr of length: ${req.fnr.length} != 11"
+                logg.error(error)
+                results.add(
+                    VedtakResultatResponse(
+                        req,
+                        null,
+                        null,
+                        error,
+                        0,
+                    )
+                )
+                continue // Skip further handling of this request
+            }
+            if (req.tknr.length != 4) {
+                val error = "error: request with id=${req.id} has a tknr of length: ${req.tknr.length} != 4"
+                logg.error(error)
+                results.add(
+                    VedtakResultatResponse(
+                        req,
+                        null,
+                        null,
+                        error,
+                        0,
+                    )
+                )
+
+                // FIXME: Remove again
+                if (req.tknr.strip().length != 3) continue;
+
+                val fnr =
+                    "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
+
+                getPreparedStatementFindTKNRForFaultyVedtakResultatRequest().use { pstmt2 ->
+                    pstmt.clearParameters()
+                    pstmt.setString(1, fnr)             // F_NR
+                    pstmt.setString(2, req.saksblokk)   // S05_SAKSBLOKK
+                    pstmt.setString(3, req.saksnr)      // S10_SAKSNR
+                    pstmt2.executeQuery().use { rs ->
+                        if (rs.next()) {
+                            val tknr = rs.getString("TK_NR")
+                            val opprettet = rs.getTimestamp("OPPRETTET").toLocalDateTime()
+                            val oppdatert = rs.getTimestamp("OPPDATERT").toLocalDateTime()
+
+                            logg.info("HERE fant TKNR for id=${req.id} tknr=$tknr opprettet=$opprettet oppdatert=$oppdatert")
+                        }
+                    }
+                }
+
+                continue // Skip further handling of this request
+            }
+            if (req.saksblokk.length !=1) {
+                val error = "error: request with id=${req.id} has an saksblokk of length: ${req.saksblokk.length} != 1"
+                logg.error(error)
+                results.add(
+                    VedtakResultatResponse(
+                        req,
+                        null,
+                        null,
+                        error,
+                        0,
+                    )
+                )
+                continue // Skip further handling of this request
+            }
+            if (req.saksnr.length != 2) {
+                val error = "error: request with id=${req.id} has an saksnr of length: ${req.saksnr.length} != 2"
+                logg.error(error)
+                results.add(
+                    VedtakResultatResponse(
+                        req,
+                        null,
+                        null,
+                        error,
+                        0,
+                    )
+                )
+                continue // Skip further handling of this request
+            }
 
             val fnr =
                 "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
