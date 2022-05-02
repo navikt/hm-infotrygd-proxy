@@ -408,23 +408,6 @@ fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
     return dbConnection!!.prepareStatement(query)
 }
 
-// FIXME: Remove again once we have what we need
-fun getPreparedStatementFindTKNRForFaultyVedtakResultatRequest(): PreparedStatement {
-    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
-    // even if we are connected to the production db: INFOTRYGD_P
-    val query =
-        """
-            SELECT TK_NR, OPPRETTET, OPPDATERT
-            FROM SA_SAK_10
-            WHERE F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
-            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-            ORDER BY OPPRETTET DESC
-            FETCH FIRST 1 ROWS ONLY
-        """.trimIndent().split("\n").joinToString(" ")
-    logg.info("DEBUG: SQL query being prepared: $query")
-    return dbConnection!!.prepareStatement(query)
-}
-
 data class VedtakResultatRequest(
     val id: String,
     val tknr: String,
@@ -521,30 +504,6 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         0,
                     )
                 )
-
-                // FIXME: Remove again
-                /*
-                if (req.tknr.strip().length != 3) continue;
-
-                val fnr =
-                    "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
-
-                getPreparedStatementFindTKNRForFaultyVedtakResultatRequest().use { pstmt2 ->
-                    pstmt2.clearParameters()
-                    pstmt2.setString(1, fnr)             // F_NR
-                    pstmt2.setString(2, req.saksblokk)   // S05_SAKSBLOKK
-                    pstmt2.setString(3, req.saksnr)      // S10_SAKSNR
-                    pstmt2.executeQuery().use { rs ->
-                        if (rs.next()) {
-                            val tknr = rs.getString("TK_NR")
-                            val opprettet = rs.getTimestamp("OPPRETTET").toLocalDateTime()
-                            val oppdatert = rs.getTimestamp("OPPDATERT").toLocalDateTime()
-
-                            logg.info("HERE fant TKNR for id=${req.id} tknr=$tknr opprettet=$opprettet oppdatert=$oppdatert")
-                        }
-                    }
-                }
-                */
 
                 continue // Skip further handling of this request
             }
