@@ -529,10 +529,10 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
 
                 getPreparedStatementFindTKNRForFaultyVedtakResultatRequest().use { pstmt2 ->
-                    pstmt.clearParameters()
-                    pstmt.setString(1, fnr)             // F_NR
-                    pstmt.setString(2, req.saksblokk)   // S05_SAKSBLOKK
-                    pstmt.setString(3, req.saksnr)      // S10_SAKSNR
+                    pstmt2.clearParameters()
+                    pstmt2.setString(1, fnr)             // F_NR
+                    pstmt2.setString(2, req.saksblokk)   // S05_SAKSBLOKK
+                    pstmt2.setString(3, req.saksnr)      // S10_SAKSNR
                     pstmt2.executeQuery().use { rs ->
                         if (rs.next()) {
                             val tknr = rs.getString("TK_NR")
