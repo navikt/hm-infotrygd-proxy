@@ -523,6 +523,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 )
 
                 // FIXME: Remove again
+                /*
                 if (req.tknr.strip().length != 3) continue;
 
                 val fnr =
@@ -543,6 +544,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         }
                     }
                 }
+                */
 
                 continue // Skip further handling of this request
             }
