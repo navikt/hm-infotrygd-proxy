@@ -419,7 +419,7 @@ fun getPreparedStatementFindTKNRForFaultyVedtakResultatRequest(): PreparedStatem
             WHERE F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
             ORDER BY OPPRETTET DESC
-            LIMIT 1
+            FETCH FIRST 1 ROWS ONLY
         """.trimIndent().split("\n").joinToString(" ")
     logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
