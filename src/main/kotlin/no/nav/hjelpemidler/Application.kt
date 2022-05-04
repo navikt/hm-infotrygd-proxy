@@ -320,23 +320,6 @@ fun Application.module() {
                 }
             }
         }
-
-        get("/test") {
-            try {
-                logg.info("/test endpoint")
-
-                val res = withRetryIfDatabaseConnectionIsStale {
-                    queryForTest()
-                }
-
-                call.respond(res)
-
-            } catch (e: Exception) {
-                logg.error(e){"Feil med henting test query"}
-                call.respond(HttpStatusCode.InternalServerError, "Feil med test query: $e")
-                return@get
-            }
-        }
     }
 }
 
@@ -420,26 +403,6 @@ fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
             AND SA_SAK_10.S01_PERSONKEY = SA_SAKSBLOKK_05.S01_PERSONKEY 
             AND SA_SAK_10.S01_PERSONKEY = SA_HENDELSE_20.S01_PERSONKEY
-        """.trimIndent().split("\n").joinToString(" ")
-    logg.info("DEBUG: SQL query being prepared: $query")
-    return dbConnection!!.prepareStatement(query)
-}
-
-fun getPreparedStatementTestQuery(): PreparedStatement {
-    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
-    // even if we are connected to the production db: INFOTRYGD_P
-    val query =
-        """
-            SELECT 
-                S10_KAPITTELNR,
-                S10_VALG,
-                S10_UNDERVALG,
-                S10_TYPE
-            FROM 
-                SA_SAK_10
-            WHERE (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-            AND S10_VALG = 'IT'
-            FETCH FIRST 400 ROWS ONLY
         """.trimIndent().split("\n").joinToString(" ")
     logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
@@ -788,29 +751,3 @@ fun queryForHentSakerForBruker(req: HentSakerForBrukerRequest): List<SakerForBru
     }
     return saker
 }
-
-fun queryForTest(): List<Map<String, Any?>> {
-    var output = mutableListOf<Map<String, Any?>>()
-
-    getPreparedStatementTestQuery().use { pstmt ->
-        pstmt.clearParameters()
-        pstmt.executeQuery().use { rs ->
-            while (rs.next()) {
-                val KAPITTELNR = rs.getObject("S10_KAPITTELNR")
-                val VALG = rs.getObject("S10_VALG")
-                val UNDERVALG = rs.getObject("S10_UNDERVALG")
-                val TYPE = rs.getObject("S10_TYPE")
-                output.add(mapOf(
-                    "KAPITTELNR" to KAPITTELNR,
-                    "VALG" to VALG,
-                    "UNDERVALG" to UNDERVALG,
-                    "TYPE" to TYPE,
-                ))
-            }
-        }
-    }
-
-    return output
-}
-
-
