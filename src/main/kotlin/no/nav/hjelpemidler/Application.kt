@@ -438,6 +438,7 @@ fun getPreparedStatementTestQuery(): PreparedStatement {
             FROM 
                 SA_SAK_10
             WHERE (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            AND S10_VALG = 'IT'
             FETCH FIRST 400 ROWS ONLY
         """.trimIndent().split("\n").joinToString(" ")
     logg.info("DEBUG: SQL query being prepared: $query")
@@ -774,7 +775,7 @@ fun queryForTest(): List<Map<String, Any?>> {
     getPreparedStatementTestQuery().use { pstmt ->
         pstmt.clearParameters()
         pstmt.executeQuery().use { rs ->
-            if (rs.next()) {
+            while (rs.next()) {
                 val KAPITTELNR = rs.getObject("S10_KAPITTELNR")
                 val VALG = rs.getObject("S10_VALG")
                 val UNDERVALG = rs.getObject("S10_UNDERVALG")
