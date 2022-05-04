@@ -345,7 +345,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     // even if we are connected to the production db: INFOTRYGD_P
     val query =
         """
-            SELECT S10_RESULTAT, S10_VEDTAKSDATO
+            SELECT S10_RESULTAT, S10_VEDTAKSDATO, S10_KAPITTELNR, S10_VALG, S10_UNDERVALG, S10_TYPE
             FROM SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
@@ -457,6 +457,7 @@ data class VedtakResultatResponse(
     val req: VedtakResultatRequest,
     val vedtaksResult: String?,
     val vedtaksDate: LocalDate?,
+    val soknadsType: String?,
     val error: String?,
     val queryTimeElapsedMs: Long,
 )
@@ -523,6 +524,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         req,
                         null,
                         null,
+                        null,
                         error,
                         0,
                     )
@@ -535,6 +537,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 results.add(
                     VedtakResultatResponse(
                         req,
+                        null,
                         null,
                         null,
                         error,
@@ -552,6 +555,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         req,
                         null,
                         null,
+                        null,
                         error,
                         0,
                     )
@@ -564,6 +568,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 results.add(
                     VedtakResultatResponse(
                         req,
+                        null,
                         null,
                         null,
                         error,
@@ -580,6 +585,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
             var foundResult = false
             var vedtaksResult: String? = null
             var vedtaksDate: String? = null
+            var soknadsType: String? = null
             var error: String? = null
             val elapsed: Duration = measureTime {
                 pstmt.clearParameters()
@@ -597,6 +603,18 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                             foundResult = true
                             vedtaksResult = rs.getString("S10_RESULTAT").trim()
                             vedtaksDate = rs.getString("S10_VEDTAKSDATO").trim()
+                            soknadsType = listOf(
+                                rs.getString("S10_KAPITTELNR"),
+                                rs.getString("S10_VALG"),
+                                rs.getString("S10_UNDERVALG"),
+                                rs.getString("S10_TYPE")
+                            ).joinToString("") {
+                                var column = it.trim()
+                                if (column.length < 2) {
+                                    column = "$column "
+                                }
+                                column
+                            }
                             if (vedtaksDate!!.length == 7) vedtaksDate =
                                 "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
                         }
@@ -646,6 +664,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         req,
                         vedtaksResult,
                         parsedVedtaksDate,
+                        soknadsType,
                         error,
                         elapsed.inWholeMilliseconds
                     )
@@ -663,6 +682,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         req,
                         vedtaksResult,
                         null,
+                        soknadsType,
                         error,
                         elapsed.inWholeMilliseconds
                     )
