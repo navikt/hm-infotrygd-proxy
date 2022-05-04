@@ -431,12 +431,15 @@ fun getPreparedStatementTestQuery(): PreparedStatement {
     val query =
         """
             SELECT 
-                *
+                S10_KAPITTELNR,
+                S10_VALG,
+                S10_UNDERVALG,
+                S10_TYPE
             FROM 
                 SA_SAK_10
             WHERE
-            (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-            FETCH FIRST 10 ROWS ONLY
+            S10_VALG = 'IT'
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
     logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
@@ -766,29 +769,23 @@ fun queryForHentSakerForBruker(req: HentSakerForBrukerRequest): List<SakerForBru
     return saker
 }
 
-fun queryForTest(): Map<String, Any?> {
-    var output = mutableMapOf<String, Any?>()
+fun queryForTest(): List<Map<String, Any?>> {
+    var output = mutableListOf<Map<String, Any?>>()
 
     getPreparedStatementTestQuery().use { pstmt ->
         pstmt.clearParameters()
-        val excludeKey = listOf(
-            "S01_PERSONKEY",
-            "F_NR",
-            "ID_SAK",
-        )
         pstmt.executeQuery().use { rs ->
             if (rs.next()) {
-                val totalColumns = rs.metaData.columnCount
-                for (column in 1..totalColumns) {
-                    val label = rs.metaData.getColumnLabel(column)
-                    val name = rs.metaData.getColumnName(column)
-                    val type = rs.metaData.getColumnTypeName(column)
-                    logg.info("$label/$name ($type): ${rs.getObject(column)}")
-                    if (excludeKey.contains(name.uppercase())) {
-                        continue
-                    }
-                    output.put(name, rs.getObject(column))
-                }
+                val KAPITTELNR = rs.getObject("S10_KAPITTELNR")
+                val VALG = rs.getObject("S10_VALG")
+                val UNDERVALG = rs.getObject("S10_UNDERVALG")
+                val TYPE = rs.getObject("S10_TYPE")
+                output.add(mapOf(
+                    "KAPITTELNR" to KAPITTELNR,
+                    "VALG" to VALG,
+                    "UNDERVALG" to UNDERVALG,
+                    "TYPE" to TYPE,
+                ))
             }
         }
     }
