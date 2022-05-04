@@ -434,7 +434,8 @@ fun getPreparedStatementTestQuery(): PreparedStatement {
                 *
             FROM 
                 SA_SAK_10
-            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            WHERE
+            (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
             FETCH FIRST 10 ROWS ONLY
         """.trimIndent().split("\n").joinToString(" ")
     logg.info("DEBUG: SQL query being prepared: $query")
