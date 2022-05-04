@@ -320,6 +320,23 @@ fun Application.module() {
                 }
             }
         }
+
+        get("/test") {
+            try {
+                logg.info("/test endpoint")
+
+                val res = withRetryIfDatabaseConnectionIsStale {
+                    queryForTest()
+                }
+
+                call.respond(res)
+
+            } catch (e: Exception) {
+                logg.error(e){"Feil med henting test query"}
+                call.respond(HttpStatusCode.InternalServerError, "Feil med test query: $e")
+                return@get
+            }
+        }
     }
 }
 
@@ -403,6 +420,22 @@ fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
             AND SA_SAK_10.S01_PERSONKEY = SA_SAKSBLOKK_05.S01_PERSONKEY 
             AND SA_SAK_10.S01_PERSONKEY = SA_HENDELSE_20.S01_PERSONKEY
+        """.trimIndent().split("\n").joinToString(" ")
+    logg.info("DEBUG: SQL query being prepared: $query")
+    return dbConnection!!.prepareStatement(query)
+}
+
+fun getPreparedStatementTestQuery(): PreparedStatement {
+    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
+    // even if we are connected to the production db: INFOTRYGD_P
+    val query =
+        """
+            SELECT 
+                *
+            FROM 
+                SA_SAK_10
+            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            FETCH FIRST 10 ROWS ONLY
         """.trimIndent().split("\n").joinToString(" ")
     logg.info("DEBUG: SQL query being prepared: $query")
     return dbConnection!!.prepareStatement(query)
@@ -730,6 +763,36 @@ fun queryForHentSakerForBruker(req: HentSakerForBrukerRequest): List<SakerForBru
         }
     }
     return saker
+}
+
+fun queryForTest(): Map<String, Any?> {
+    var output = mutableMapOf<String, Any?>()
+
+    getPreparedStatementTestQuery().use { pstmt ->
+        pstmt.clearParameters()
+        val excludeKey = listOf(
+            "S01_PERSONKEY",
+            "F_NR",
+            "ID_SAK",
+        )
+        pstmt.executeQuery().use { rs ->
+            if (rs.next()) {
+                val totalColumns = rs.metaData.columnCount
+                for (column in 1..totalColumns) {
+                    val label = rs.metaData.getColumnLabel(column)
+                    val name = rs.metaData.getColumnName(column)
+                    val type = rs.metaData.getColumnTypeName(column)
+                    logg.info("$label/$name ($type): ${rs.getObject(column)}")
+                    if (excludeKey.contains(name.uppercase())) {
+                        continue
+                    }
+                    output.put(name, rs.getObject(column))
+                }
+            }
+        }
+    }
+
+    return output
 }
 
 
