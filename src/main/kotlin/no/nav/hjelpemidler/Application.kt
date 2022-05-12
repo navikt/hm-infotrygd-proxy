@@ -577,7 +577,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                                     column = "$column "
                                 }
                                 column
-                            }
+                            }.trimEnd()
                             if (vedtaksDate!!.length == 7) vedtaksDate =
                                 "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
                         }
