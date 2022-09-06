@@ -212,25 +212,6 @@ fun Application.module() {
             }
         }
 
-        post("/har-vedtak-fra-for-test") {
-            try {
-                val req = call.receive<HarVedtakFraFørRequest>()
-                logg.info("Incoming authenticated request for /har-vedtak-fra-for (fnr=MASKED)")
-
-                val res = withRetryIfDatabaseConnectionIsStale {
-                    queryForHarVedtakFraFør(req)
-                }
-
-                call.respond(res)
-
-            } catch (e: Exception) {
-                logg.error("Exception thrown during processing: $e")
-                e.printStackTrace()
-                call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
-                return@post
-            }
-        }
-
         // Authenticated database proxy requests
         authenticate("aad") {
             post("/vedtak-resultat") {
