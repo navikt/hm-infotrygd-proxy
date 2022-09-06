@@ -371,6 +371,9 @@ fun getPreparedStatementHarVedtakFraFør(): PreparedStatement {
             SELECT 1
             FROM SA_SAK_10
             WHERE F_NR = ?
+            AND S10_RESULTAT <> 'A '
+            AND S10_RESULTAT <> 'H '
+            AND S10_RESULTAT <> 'HB'
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
     logg.info("DEBUG: SQL query being prepared: $query")
