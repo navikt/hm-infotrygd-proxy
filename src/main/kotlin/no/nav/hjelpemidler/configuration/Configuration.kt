@@ -21,7 +21,7 @@ internal object Configuration {
         mapOf(
             "APPLICATION_PROFILE" to "prod",
 
-            "HM_INFOTRYGD_PROXY_DB_NAME" to "INFOTRYGD_P", // infotrygd_hjp
+            "HM_INFOTRYGD_PROXY_DB_NAME" to "INFOTRYGD_HJP",
         )
     )
 
