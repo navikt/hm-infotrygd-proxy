@@ -27,6 +27,8 @@ spec:
         mountPath: /secrets/infotrygd_hj/credentials
       - kvPath: oracle/data/prod/config/hj_infotrygd_p
         mountPath: /secrets/infotrygd_hj/config
+      - kvPath: oracle/data/prod/config/infotrygd_hjp
+        mountPath: /secrets/infotrygd_hjp/config
   ingresses:
     - https://hm-infotrygd-proxy.prod-fss-pub.nais.io
   azure:
