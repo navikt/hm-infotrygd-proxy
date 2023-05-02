@@ -64,6 +64,8 @@ private val sikkerlogg = KotlinLogging.logger("tjenestekall")
 private var dbConnection: Connection? = null
 private val ready = AtomicBoolean(false)
 
+private val dbSkjemaNavn = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]!!
+
 fun main(args: Array<String>) {
     connectToInfotrygdDB()
 
@@ -329,7 +331,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     val query =
         """
             SELECT S10_RESULTAT, S10_VEDTAKSDATO, S10_KAPITTELNR, S10_VALG, S10_UNDERVALG, S10_TYPE
-            FROM SA_SAK_10
+            FROM ${dbSkjemaNavn}.SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
@@ -341,7 +343,7 @@ fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
     val query =
         """
             SELECT count(*) AS number_of_rows
-            FROM SA_SAK_10
+            FROM ${dbSkjemaNavn}.SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
@@ -355,7 +357,7 @@ fun getPreparedStatementHasDecisionFor(): PreparedStatement {
     val query =
         """
             SELECT 1
-            FROM SA_SAK_10
+            FROM ${dbSkjemaNavn}.SA_SAK_10
             WHERE S10_VEDTAKSDATO = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
@@ -369,7 +371,7 @@ fun getPreparedStatementHarVedtakFraFør(): PreparedStatement {
     val query =
         """
             SELECT 1
-            FROM SA_SAK_10
+            FROM ${dbSkjemaNavn}.SA_SAK_10
             WHERE F_NR = ?
             AND S10_RESULTAT <> 'A '
             AND S10_RESULTAT <> 'H '
@@ -398,9 +400,9 @@ fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
                 S05_BRUKERID, 
                 S20_OPPLYSNING   
             FROM 
-                SA_SAK_10, 
-                SA_SAKSBLOKK_05, 
-                SA_HENDELSE_20
+                ${dbSkjemaNavn}.SA_SAK_10, 
+                ${dbSkjemaNavn}.SA_SAKSBLOKK_05, 
+                ${dbSkjemaNavn}.SA_HENDELSE_20
             WHERE 
                 SA_SAK_10.F_NR = 48041423897
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
