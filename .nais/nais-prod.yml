@@ -51,3 +51,6 @@ spec:
         - application: hm-saksbehandling
           namespace: teamdigihot
           cluster: dev-gcp
+        - application: hm-soknad-api
+          namespace: teamdigihot
+          cluster: prod-gcp
