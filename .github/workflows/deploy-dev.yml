@@ -9,7 +9,7 @@ on:
       - "CODEOWNERS"
     branches:
       - main
-      - cleanup
+      - ktor
 
 jobs:
   build:

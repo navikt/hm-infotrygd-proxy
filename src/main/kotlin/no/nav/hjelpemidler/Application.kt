@@ -2,25 +2,22 @@ package no.nav.hjelpemidler
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.ktor.application.Application
-import io.ktor.application.ApplicationStopping
-import io.ktor.application.call
-import io.ktor.application.install
-import io.ktor.auth.authenticate
-import io.ktor.features.CallLogging
-import io.ktor.features.ContentNegotiation
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.jackson.JacksonConverter
-import io.ktor.metrics.micrometer.MicrometerMetrics
-import io.ktor.request.path
-import io.ktor.request.receive
-import io.ktor.response.respond
-import io.ktor.routing.post
-import io.ktor.routing.routing
+import io.ktor.serialization.jackson.jackson
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopping
+import io.ktor.server.application.call
+import io.ktor.server.application.install
+import io.ktor.server.auth.authenticate
+import io.ktor.server.metrics.micrometer.MicrometerMetrics
 import io.ktor.server.netty.EngineMain
+import io.ktor.server.plugins.callloging.CallLogging
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.request.path
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
+import io.ktor.server.routing.post
+import io.ktor.server.routing.routing
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
@@ -139,15 +136,10 @@ fun Application.module() {
     installAuthentication()
 
     install(ContentNegotiation) {
-        register(
-            ContentType.Application.Json,
-            JacksonConverter(
-                jacksonObjectMapper()
-                    .registerModule(JavaTimeModule())
-                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                    .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            )
-        )
+        jackson {
+            disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        }
     }
 
     install(CallLogging) {

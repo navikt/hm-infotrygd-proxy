@@ -7,7 +7,6 @@ plugins {
 
 val konfig_version: String by project
 val ojdbc_version: String by project
-val ktor_version: String by project
 val unleash_version: String by project
 val prometheus_version: String by project
 val jackson_version: String by project
@@ -19,7 +18,7 @@ repositories {
     mavenCentral()
 }
 
-fun ktor(name: String) = "io.ktor:ktor-$name:$ktor_version"
+fun ktor(name: String) = "io.ktor:ktor-$name:2.3.10"
 
 dependencies {
     // Logging
@@ -30,16 +29,19 @@ dependencies {
     // Ktor Server
     implementation(ktor("server-netty"))
     implementation(ktor("server-core"))
-    implementation(ktor("auth"))
-    implementation(ktor("auth-jwt"))
-    implementation(ktor("jackson"))
-    implementation(ktor("metrics-micrometer"))
+    implementation(ktor("server-auth"))
+    implementation(ktor("server-auth-jwt"))
+    implementation(ktor("serialization-jackson"))
+    implementation(ktor("server-metrics-micrometer"))
+    implementation(ktor("server-content-negotiation"))
+    implementation(ktor("server-call-id"))
 
     // Ktor Client
     implementation(ktor("client-core"))
     implementation(ktor("client-auth"))
     implementation(ktor("client-apache"))
     implementation(ktor("client-jackson"))
+    implementation(ktor("client-content-negotiation"))
 
     implementation("com.natpryce:konfig:$konfig_version")
     implementation("com.oracle.database.jdbc:ojdbc8:$ojdbc_version")
