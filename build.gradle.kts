@@ -5,8 +5,6 @@ plugins {
     kotlin("jvm") version "1.6.10"
 }
 
-val kotlin_logging_version: String by project
-val logback_version: String by project
 val konfig_version: String by project
 val ojdbc_version: String by project
 val ktor_version: String by project
@@ -25,8 +23,9 @@ fun ktor(name: String) = "io.ktor:ktor-$name:$ktor_version"
 
 dependencies {
     // Logging
-    implementation("io.github.microutils:kotlin-logging:$kotlin_logging_version")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("io.github.microutils:kotlin-logging:3.0.5")
+    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+    implementation("ch.qos.logback:logback-classic:1.5.5")
 
     // Ktor Server
     implementation(ktor("server-netty"))
