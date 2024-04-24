@@ -9,7 +9,6 @@ val konfig_version: String by project
 val ojdbc_version: String by project
 val unleash_version: String by project
 val prometheus_version: String by project
-val jackson_version: String by project
 
 group = "no.nav.hjelpemidler"
 version = "1.0-SNAPSHOT"
@@ -47,7 +46,9 @@ dependencies {
     implementation("com.oracle.database.jdbc:ojdbc8:$ojdbc_version")
     implementation("no.finn.unleash:unleash-client-java:$unleash_version")
     implementation("io.micrometer:micrometer-registry-prometheus:$prometheus_version")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jackson_version")
+    val jacksonVersion = "2.15.3"
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
 
     // Test
     testImplementation(kotlin("test"))
