@@ -17,9 +17,6 @@ import io.ktor.metrics.micrometer.MicrometerMetrics
 import io.ktor.request.path
 import io.ktor.request.receive
 import io.ktor.response.respond
-import io.ktor.response.respondText
-import io.ktor.response.respondTextWriter
-import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.routing
 import io.ktor.server.netty.EngineMain
@@ -34,12 +31,11 @@ import io.micrometer.core.instrument.binder.system.ProcessorMetrics
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import io.prometheus.client.CollectorRegistry
-import io.prometheus.client.exporter.common.TextFormat
 import mu.KotlinLogging
 import no.nav.hjelpemidler.configuration.Configuration
 import no.nav.hjelpemidler.domain.Fødselsnummer
 import no.nav.hjelpemidler.domain.tilInfotrygdFormat
-import no.nav.hjelpemidler.metrics.Prometheus
+import no.nav.hjelpemidler.healtcheck.healtcheckApi
 import oracle.jdbc.OracleConnection
 import oracle.jdbc.pool.OracleDataSource
 import org.slf4j.event.Level
@@ -183,36 +179,7 @@ fun Application.module() {
 
     routing {
         // Endpoints for Kubernetes unauthenticated health checks
-
-        get("/isalive") {
-            // If we have gotten ready=true we check that dbConnection is still valid, or else we are ALIVE (so we don't get our pod restarted during startup)
-            if (ready.get()) {
-                val dbValid = dbConnection!!.isValid(10)
-                if (!dbValid) {
-                    Prometheus.infotrygdDbAvailable.set(0.0)
-                    return@get call.respondText("NOT ALIVE", ContentType.Text.Plain, HttpStatusCode.ServiceUnavailable)
-                }
-                Prometheus.infotrygdDbAvailable.set(1.0)
-            }
-            call.respondText("ALIVE", ContentType.Text.Plain)
-        }
-
-        get("/isready") {
-            if (!ready.get()) return@get call.respondText(
-                "NOT READY",
-                ContentType.Text.Plain,
-                HttpStatusCode.ServiceUnavailable
-            )
-            call.respondText("READY", ContentType.Text.Plain)
-        }
-
-        get("/metrics") {
-            val names = call.request.queryParameters.getAll("name[]")?.toSet() ?: emptySet()
-
-            call.respondTextWriter(ContentType.parse(TextFormat.CONTENT_TYPE_004)) {
-                TextFormat.write004(this, CollectorRegistry.defaultRegistry.filteredMetricFamilySamples(names))
-            }
-        }
+        healtcheckApi(ready, dbConnection)
 
         // Authenticated database proxy requests
         authenticate("aad") {
