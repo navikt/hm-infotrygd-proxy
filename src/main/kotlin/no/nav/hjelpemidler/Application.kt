@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.application.Application
+import io.ktor.application.ApplicationStopping
 import io.ktor.application.call
 import io.ktor.application.install
 import io.ktor.auth.authenticate
@@ -62,19 +63,7 @@ private val ready = AtomicBoolean(false)
 
 private val dbSkjemaNavn = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]!!
 
-fun main(args: Array<String>) {
-    connectToInfotrygdDB()
-
-    // Serve http REST API requests
-    EngineMain.main(args)
-
-    // Note: We do not want to set ready=false again, dbConnection.isValid() will have kubernetes restart our entire pod as it is closed below.
-    // and setting ready=false forces our /isAlive-endpoint to always say "ALIVE".
-
-    // Cleanup
-    logg.info("Cleaning up and stopping.")
-    dbConnection?.close()
-}
+fun main(args: Array<String>) = EngineMain.main(args)
 
 fun connectToInfotrygdDB() {
     // Clean up resources if we have already had a database connection set up here that has now failed
@@ -137,6 +126,16 @@ fun <T> withRetryIfDatabaseConnectionIsStale(block: () -> T): T {
 @ExperimentalTime
 @Suppress("unused") // Referenced in application.conf
 fun Application.module() {
+    connectToInfotrygdDB()
+    // Note: We do not want to set ready=false again, dbConnection.isValid() will have kubernetes restart our entire pod as it is closed below.
+    // and setting ready=false forces our /isAlive-endpoint to always say "ALIVE".
+
+    environment.monitor.subscribe(ApplicationStopping) {
+        // Cleanup
+        logg.info("Cleaning up and stopping.")
+        dbConnection?.close()
+    }
+
     installAuthentication()
 
     install(ContentNegotiation) {
