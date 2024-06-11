@@ -55,10 +55,11 @@ import kotlin.time.measureTime
 private val logg = KotlinLogging.logger {}
 private val sikkerlogg = KotlinLogging.logger("tjenestekall")
 
+// TODO -> bytt global connection med connection pool med HikariCP
 private var dbConnection: Connection? = null
 private val ready = AtomicBoolean(false)
 
-private val dbSkjemaNavn = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_NAME"]!!
+private val dbSkjemaNavn by lazy { Configuration.HM_INFOTRYGD_PROXY_DB_NAME }
 
 fun main(args: Array<String>) = EngineMain.main(args)
 
@@ -69,22 +70,21 @@ fun connectToInfotrygdDB() {
 
     // Set up a new connection
     try {
-        sikkerlogg.info("Connecting to Infotrygd database with db-config-url=${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_URL"]}, db-config-username=${Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]}")
+        sikkerlogg.info { "Connecting to Infotrygd database with db-config-url: ${Configuration.HM_INFOTRYGD_PROXY_DB_JDBC_URL}, db-config-username: ${Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME}" }
 
         // Set up database connection
-        val info = Properties()
-        info[OracleConnection.CONNECTION_PROPERTY_USER_NAME] =
-            Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_USR"]!!
-        info[OracleConnection.CONNECTION_PROPERTY_PASSWORD] =
-            Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_PW"]!!
-        info[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
 
-        val ods = OracleDataSource()
-        ods.url = Configuration.oracleDatabaseConfig["HM_INFOTRYGD_PROXY_DB_URL"]!!
-        ods.connectionProperties = info
+        // TODO -> bytt med connection pool med HikariCP
+        val dataSource = OracleDataSource()
+        dataSource.url = Configuration.HM_INFOTRYGD_PROXY_DB_JDBC_URL
+        dataSource.connectionProperties = Properties().apply {
+            this[OracleConnection.CONNECTION_PROPERTY_USER_NAME] = Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME
+            this[OracleConnection.CONNECTION_PROPERTY_PASSWORD] = Configuration.HM_INFOTRYGD_PROXY_DB_PASSWORD
+            this[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
+        }
 
-        logg.info("Connecting to database")
-        dbConnection = ods.connection
+        logg.info { "Connecting to database" }
+        dbConnection = dataSource.connection
 
         logg.info("Fetching db metadata")
         val dbmd = dbConnection!!.metaData
@@ -94,8 +94,7 @@ fun connectToInfotrygdDB() {
         logg.info("Database connected, hm-infotrygd-proxy ready")
         ready.set(true)
     } catch (e: Exception) {
-        logg.info("Exception while connecting to database: $e")
-        e.printStackTrace()
+        logg.info(e) { "Exception while connecting to database" }
         throw e
     }
 }
@@ -109,7 +108,7 @@ fun <T> withRetryIfDatabaseConnectionIsStale(block: () -> T): T {
         } catch (e: SQLException) {
             lastException = e
             if (e.toString().contains("ORA-02399")) {
-                logg.warn("Infotrygd replication database closed the connection due to their connection-max-life deadline, we reconnect and try again: $e")
+                logg.warn(e) { "Infotrygd replication database closed the connection due to their connection-max-life deadline, we reconnect and try again" }
                 connectToInfotrygdDB() // Reset database connection
                 continue // Retry if we have attempts left
             }
@@ -176,9 +175,11 @@ fun Application.module() {
             post("/vedtak-resultat") {
                 /*
                 // For testing infotrygd down-time
-                call.respondText("""
-                    {"error": "testing down-time measurements"}
-                """.trimIndent(), ContentType.Application.Json, HttpStatusCode.InternalServerError)
+                call.respondText(
+                    """
+                        {"error": "testing down-time measurements"}
+                    """.trimIndent(), ContentType.Application.Json, HttpStatusCode.InternalServerError
+                )
                 return@post
                  */
 
@@ -200,9 +201,8 @@ fun Application.module() {
 
                     call.respond(res)
                 } catch (e: Exception) {
-                    logg.error("Exception thrown during processing: $e")
-                    e.printStackTrace()
-                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                    logg.error(e) { "Exception thrown during processing" }
+                    call.respond(HttpStatusCode.InternalServerError, e.message ?: "Unknown error")
                     return@post
                 }
             }
@@ -222,9 +222,8 @@ fun Application.module() {
 
                     call.respond(res)
                 } catch (e: Exception) {
-                    logg.error("Exception thrown during processing: $e")
-                    e.printStackTrace()
-                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                    logg.error(e) { "Exception thrown during processing" }
+                    call.respond(HttpStatusCode.InternalServerError, e.message ?: "Unknown error")
                     return@post
                 }
             }
@@ -245,9 +244,8 @@ fun Application.module() {
 
                     call.respond(res)
                 } catch (e: Exception) {
-                    logg.error("Exception thrown during processing: $e")
-                    e.printStackTrace()
-                    call.respond(HttpStatusCode.InternalServerError, "internal server error: $e")
+                    logg.error(e) { "Exception thrown during processing" }
+                    call.respond(HttpStatusCode.InternalServerError, e.message ?: "Unknown error")
                     return@post
                 }
             }
@@ -597,8 +595,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 val err = "error: could not parse vedtaksDate=$vedtaksDate: $e"
                 error = if (error != null) "error: $error; $err" else err
 
-                logg.error(error)
-                e.printStackTrace()
+                logg.error(e) { error }
 
                 results.add(
                     VedtakResultatResponse(
