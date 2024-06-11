@@ -3,6 +3,7 @@ package no.nav.hjelpemidler
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
@@ -30,7 +31,6 @@ import io.micrometer.core.instrument.binder.system.ProcessorMetrics
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import io.prometheus.client.CollectorRegistry
-import mu.KotlinLogging
 import no.nav.hjelpemidler.configuration.Configuration
 import no.nav.hjelpemidler.domain.Fødselsnummer
 import no.nav.hjelpemidler.domain.tilInfotrygdFormat
@@ -50,7 +50,6 @@ import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.set
 import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
 private val logg = KotlinLogging.logger {}
@@ -94,7 +93,6 @@ fun connectToInfotrygdDB() {
 
         logg.info("Database connected, hm-infotrygd-proxy ready")
         ready.set(true)
-
     } catch (e: Exception) {
         logg.info("Exception while connecting to database: $e")
         e.printStackTrace()
@@ -121,7 +119,6 @@ fun <T> withRetryIfDatabaseConnectionIsStale(block: () -> T): T {
     throw lastException!! // No more attempts, so we throw the last exception we had
 }
 
-@ExperimentalTime
 @Suppress("unused") // Referenced in application.conf
 fun Application.module() {
     connectToInfotrygdDB()
@@ -148,8 +145,8 @@ fun Application.module() {
         level = Level.TRACE
         filter { call ->
             !call.request.path().startsWith("/internal") &&
-                    !call.request.path().startsWith("/isalive") &&
-                    !call.request.path().startsWith("/isready")
+                !call.request.path().startsWith("/isalive") &&
+                !call.request.path().startsWith("/isready")
         }
     }
 
@@ -157,7 +154,7 @@ fun Application.module() {
         registry = PrometheusMeterRegistry(
             PrometheusConfig.DEFAULT,
             CollectorRegistry.defaultRegistry,
-            Clock.SYSTEM
+            Clock.SYSTEM,
         )
         meterBinders = listOf(
             ClassLoaderMetrics(),
@@ -177,7 +174,6 @@ fun Application.module() {
         // Authenticated database proxy requests
         authenticate("aad") {
             post("/vedtak-resultat") {
-
                 /*
                 // For testing infotrygd down-time
                 call.respondText("""
@@ -203,7 +199,6 @@ fun Application.module() {
                     }
 
                     call.respond(res)
-
                 } catch (e: Exception) {
                     logg.error("Exception thrown during processing: $e")
                     e.printStackTrace()
@@ -226,7 +221,6 @@ fun Application.module() {
                     }
 
                     call.respond(res)
-
                 } catch (e: Exception) {
                     logg.error("Exception thrown during processing: $e")
                     e.printStackTrace()
@@ -246,11 +240,10 @@ fun Application.module() {
 
                     // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
                     if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
-                        //res.harVedtakFraFør = true
+                        // res.harVedtakFraFør = true
                     }
 
                     call.respond(res)
-
                 } catch (e: Exception) {
                     logg.error("Exception thrown during processing: $e")
                     e.printStackTrace()
@@ -269,14 +262,13 @@ fun Application.module() {
                     }
 
                     // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
-                    //if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
-                      //  res.resultat = true
-                    //}
+                    // if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
+                    //  res.resultat = true
+                    // }
 
                     call.respond(res)
-
                 } catch (e: Exception) {
-                    logg.error(e){"Feil med henting av saker for bruker"}
+                    logg.error(e) { "Feil med henting av saker for bruker" }
                     call.respond(HttpStatusCode.InternalServerError, "Feil med henting av saker for bruker: $e")
                     return@post
                 }
@@ -291,7 +283,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
     val query =
         """
             SELECT S10_RESULTAT, S10_VEDTAKSDATO, S10_KAPITTELNR, S10_VALG, S10_UNDERVALG, S10_TYPE
-            FROM ${dbSkjemaNavn}.SA_SAK_10
+            FROM $dbSkjemaNavn.SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
@@ -303,7 +295,7 @@ fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
     val query =
         """
             SELECT count(*) AS number_of_rows
-            FROM ${dbSkjemaNavn}.SA_SAK_10
+            FROM $dbSkjemaNavn.SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
@@ -317,7 +309,7 @@ fun getPreparedStatementHasDecisionFor(): PreparedStatement {
     val query =
         """
             SELECT 1
-            FROM ${dbSkjemaNavn}.SA_SAK_10
+            FROM $dbSkjemaNavn.SA_SAK_10
             WHERE S10_VEDTAKSDATO = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
@@ -331,7 +323,7 @@ fun getPreparedStatementHarVedtakFraFør(): PreparedStatement {
     val query =
         """
             SELECT 1
-            FROM ${dbSkjemaNavn}.SA_SAK_10
+            FROM $dbSkjemaNavn.SA_SAK_10
             WHERE F_NR = ?
             AND S10_RESULTAT <> 'A '
             AND S10_RESULTAT <> 'H '
@@ -360,9 +352,9 @@ fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
                 S05_BRUKERID, 
                 S20_OPPLYSNING   
             FROM 
-                ${dbSkjemaNavn}.SA_SAK_10, 
-                ${dbSkjemaNavn}.SA_SAKSBLOKK_05, 
-                ${dbSkjemaNavn}.SA_HENDELSE_20
+                $dbSkjemaNavn.SA_SAK_10, 
+                $dbSkjemaNavn.SA_SAKSBLOKK_05, 
+                $dbSkjemaNavn.SA_HENDELSE_20
             WHERE 
                 SA_SAK_10.F_NR = 48041423897
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
@@ -402,15 +394,15 @@ data class HarVedtakForResponse(
 )
 
 data class HarVedtakFraFørRequest(
-    val fnr: String
+    val fnr: String,
 )
 
 data class HarVedtakFraFørResponse(
-    val harVedtakFraFør: Boolean
+    val harVedtakFraFør: Boolean,
 )
 
 data class HentSakerForBrukerRequest(
-    val fnr: String
+    val fnr: String,
 )
 
 data class SakerForBrukerResponse(
@@ -425,7 +417,6 @@ data class SakerForBrukerResponse(
     val error: String? = null,
 )
 
-
 private val dateFormatter = DateTimeFormatterBuilder()
     .parseCaseInsensitive()
     .appendValue(ChronoField.DAY_OF_MONTH, 2)
@@ -437,14 +428,12 @@ private val dateFormatter = DateTimeFormatterBuilder()
     .parseStrict()
     .toFormatter()
 
-@ExperimentalTime
 fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResultatResponse> {
     val results = mutableListOf<VedtakResultatResponse>()
     getPreparedStatementDecisionResult().use { pstmt ->
         for (req in reqs) {
-
             // Check if request looks right
-            if (req.fnr.strip().length != 11) {
+            if (req.fnr.trim().length != 11) {
                 val error = "error: request with id=${req.id} has a fnr of length: ${req.fnr.length} != 11"
                 logg.error(error)
                 results.add(
@@ -455,12 +444,12 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         null,
                         error,
                         0,
-                    )
+                    ),
                 )
                 continue // Skip further handling of this request
             }
-            if (req.tknr.strip().length != 4) {
-                val error = "error: request with id=${req.id} has a tknr of length: ${req.tknr.strip().length} != 4"
+            if (req.tknr.trim().length != 4) {
+                val error = "error: request with id=${req.id} has a tknr of length: ${req.tknr.trim().length} != 4"
                 logg.error(error)
                 results.add(
                     VedtakResultatResponse(
@@ -470,12 +459,12 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         null,
                         error,
                         0,
-                    )
+                    ),
                 )
 
                 continue // Skip further handling of this request
             }
-            if (req.saksblokk.strip().length !=1) {
+            if (req.saksblokk.trim().length != 1) {
                 val error = "error: request with id=${req.id} has an saksblokk of length: ${req.saksblokk.length} != 1"
                 logg.error(error)
                 results.add(
@@ -486,11 +475,11 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         null,
                         error,
                         0,
-                    )
+                    ),
                 )
                 continue // Skip further handling of this request
             }
-            if (req.saksnr.strip().length != 2) {
+            if (req.saksnr.trim().length != 2) {
                 val error = "error: request with id=${req.id} has an saksnr of length: ${req.saksnr.length} != 2"
                 logg.error(error)
                 results.add(
@@ -501,7 +490,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         null,
                         error,
                         0,
-                    )
+                    ),
                 )
                 continue // Skip further handling of this request
             }
@@ -517,10 +506,10 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
             var error: String? = null
             val elapsed: Duration = measureTime {
                 pstmt.clearParameters()
-                pstmt.setString(1, req.tknr)        // TK_NR
-                pstmt.setString(2, fnr)             // F_NR
-                pstmt.setString(3, req.saksblokk)   // S05_SAKSBLOKK
-                pstmt.setString(4, req.saksnr)      // S10_SAKSNR
+                pstmt.setString(1, req.tknr) // TK_NR
+                pstmt.setString(2, fnr) // F_NR
+                pstmt.setString(3, req.saksblokk) // S05_SAKSBLOKK
+                pstmt.setString(4, req.saksnr) // S10_SAKSNR
                 pstmt.executeQuery().use { rs ->
                     while (rs.next()) {
                         if (foundResult) {
@@ -535,7 +524,7 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                                 rs.getString("S10_KAPITTELNR"),
                                 rs.getString("S10_VALG"),
                                 rs.getString("S10_UNDERVALG"),
-                                rs.getString("S10_TYPE")
+                                rs.getString("S10_TYPE"),
                             ).joinToString("") {
                                 var column = it.trim()
                                 if (column.length < 2) {
@@ -543,8 +532,10 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                                 }
                                 column
                             }.trimEnd()
-                            if (vedtaksDate!!.length == 7) vedtaksDate =
-                                "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
+                            if (vedtaksDate!!.length == 7) {
+                                vedtaksDate =
+                                    "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
+                            }
                         }
                     }
                 }
@@ -565,17 +556,20 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                     hashtext
                 }
 
-                error = "no such vedtak in the database (tknr=${req.tknr}, saksblokk=${req.saksblokk}, saksnr=${req.saksnr}, hashedIdent=${hashedIdent})"
+                error =
+                    "no such vedtak in the database (tknr=${req.tknr}, saksblokk=${req.saksblokk}, saksnr=${req.saksnr}, hashedIdent=$hashedIdent)"
 
                 getPreparedStatementDoesPersonkeyExist().use { pstmt2 ->
                     pstmt2.clearParameters()
-                    pstmt2.setString(1, req.tknr)        // TK_NR
-                    pstmt2.setString(2, fnr)             // F_NR
+                    pstmt2.setString(1, req.tknr) // TK_NR
+                    pstmt2.setString(2, fnr) // F_NR
                     pstmt2.executeQuery().use { rs ->
                         if (rs.next()) {
                             val numberOfRows = rs.getInt("number_of_rows")
-                            if (numberOfRows > 0) error += "; however personKey has rows in the table: #" + numberOfRows
-                                .toString()
+                            if (numberOfRows > 0) {
+                                error += "; however personKey has rows in the table: #" + numberOfRows
+                                    .toString()
+                            }
                         }
                     }
                 }
@@ -583,8 +577,10 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
 
             try {
                 var parsedVedtaksDate: LocalDate? = null
-                if (vedtaksDate != null && vedtaksDate != "0") parsedVedtaksDate =
-                    LocalDate.parse(vedtaksDate!!, dateFormatter)
+                if (vedtaksDate != null && vedtaksDate != "0") {
+                    parsedVedtaksDate =
+                        LocalDate.parse(vedtaksDate!!, dateFormatter)
+                }
                 if (vedtaksResult != null && vedtaksResult == "  ") vedtaksResult = ""
 
                 results.add(
@@ -594,10 +590,9 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         parsedVedtaksDate,
                         soknadsType,
                         error,
-                        elapsed.inWholeMilliseconds
-                    )
+                        elapsed.inWholeMilliseconds,
+                    ),
                 )
-
             } catch (e: Exception) {
                 val err = "error: could not parse vedtaksDate=$vedtaksDate: $e"
                 error = if (error != null) "error: $error; $err" else err
@@ -612,8 +607,8 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                         null,
                         soknadsType,
                         error,
-                        elapsed.inWholeMilliseconds
-                    )
+                        elapsed.inWholeMilliseconds,
+                    ),
                 )
             }
         }
@@ -621,7 +616,6 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     return results.toTypedArray()
 }
 
-@ExperimentalTime
 fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
     var result = HarVedtakForResponse(false)
     getPreparedStatementHasDecisionFor().use { pstmt ->
@@ -636,10 +630,10 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
 
         // Look up the request in the Infotrygd replication database
         pstmt.clearParameters()
-        pstmt.setString(1, vedtaksDato)     // S10_VEDTAKSDATO
-        pstmt.setString(2, fnr)             // F_NR
-        pstmt.setString(3, req.saksblokk)   // S05_SAKSBLOKK
-        pstmt.setString(4, req.saksnr)      // S10_SAKSNR
+        pstmt.setString(1, vedtaksDato) // S10_VEDTAKSDATO
+        pstmt.setString(2, fnr) // F_NR
+        pstmt.setString(3, req.saksblokk) // S05_SAKSBLOKK
+        pstmt.setString(4, req.saksnr) // S10_SAKSNR
         pstmt.executeQuery().use { rs ->
             if (rs.next()) {
                 result = HarVedtakForResponse(true)
@@ -649,8 +643,6 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
     return result
 }
 
-
-@ExperimentalTime
 fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResponse {
     var result = HarVedtakFraFørResponse(false)
     getPreparedStatementHarVedtakFraFør().use { pstmt ->
@@ -662,7 +654,7 @@ fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResp
 
         // Look up the request in the Infotrygd replication database
         pstmt.clearParameters()
-        pstmt.setString(1, fnr)             // F_NR
+        pstmt.setString(1, fnr) // F_NR
         pstmt.executeQuery().use { rs ->
             if (rs.next()) {
                 result = HarVedtakFraFørResponse(true)
@@ -672,8 +664,6 @@ fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResp
     return result
 }
 
-
-@ExperimentalTime
 fun queryForHentSakerForBruker(req: HentSakerForBrukerRequest): List<SakerForBrukerResponse> {
     val saker: MutableList<SakerForBrukerResponse> = mutableListOf()
     getPreparedStatementHentSakerForBruker().use { pstmt ->
@@ -690,7 +680,7 @@ fun queryForHentSakerForBruker(req: HentSakerForBrukerRequest): List<SakerForBru
                     val sakGjelder = listOf<String>(
                         rs.getString("S10_KAPITTELNR"),
                         rs.getString("S10_VALG"),
-                        rs.getString("S10_UNDERVALG")
+                        rs.getString("S10_UNDERVALG"),
                     )
                     val saksblokk = rs.getString("SA_SAK_10.S05_SAKSBLOKK")
                     val saksNummer = rs.getString("S10_SAKSNR")
@@ -705,11 +695,12 @@ fun queryForHentSakerForBruker(req: HentSakerForBrukerRequest): List<SakerForBru
                         saksbehandler = brukerID,
                         opplysning = opplysning,
                         vedtaksResultat = vedtaksResult,
-                        vedtaksDato = vedtaksDate?.let { LocalDate.parse(it, dateFormatter) })
+                        vedtaksDato = vedtaksDate?.let { LocalDate.parse(it, dateFormatter) },
+                    )
 
                     saker.add(sak)
                 } catch (e: Exception) {
-                    logg.error(e){"Feil med parsing av sak for bruker"}
+                    logg.error(e) { "Feil med parsing av sak for bruker" }
                 }
             }
         }

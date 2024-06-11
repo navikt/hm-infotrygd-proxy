@@ -28,9 +28,12 @@ fun Route.healtcheckApi(ready: AtomicBoolean, dbConnection: Connection?) {
     }
 
     get("/isready") {
-        if (!ready.get()) return@get call.respondText(
-            "NOT READY", status = HttpStatusCode.ServiceUnavailable
-        )
+        if (!ready.get()) {
+            return@get call.respondText(
+                "NOT READY",
+                status = HttpStatusCode.ServiceUnavailable,
+            )
+        }
         call.respondText("READY")
     }
 

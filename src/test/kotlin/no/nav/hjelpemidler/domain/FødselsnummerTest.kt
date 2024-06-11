@@ -35,5 +35,4 @@ class FødselsnummerTest {
     fun mapToInfotrygdFormat() {
         Assertions.assertEquals("33221156789", Fødselsnummer("11223356789").tilInfotrygdFormat())
     }
-
 }

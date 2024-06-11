@@ -1,83 +1,65 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    application
-    kotlin("jvm") version "1.9.23"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ktor)
+    alias(libs.plugins.spotless)
 }
-
-val konfig_version: String by project
-val ojdbc_version: String by project
-val unleash_version: String by project
-val prometheus_version: String by project
-
-group = "no.nav.hjelpemidler"
-version = "1.0-SNAPSHOT"
-
-repositories {
-    mavenCentral()
-}
-
-fun ktor(name: String) = "io.ktor:ktor-$name:2.3.10"
 
 dependencies {
+    implementation(libs.kotlin.stdlib)
+    implementation(libs.konfig.deprecated)
+
     // Logging
-    implementation("io.github.microutils:kotlin-logging:3.0.5")
-    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
-    implementation("ch.qos.logback:logback-classic:1.5.5")
+    implementation(libs.kotlin.logging)
+    runtimeOnly(libs.logback.classic)
+    runtimeOnly(libs.logstash.logback.encoder)
 
     // Ktor Server
-    implementation(ktor("server-netty"))
-    implementation(ktor("server-core"))
-    implementation(ktor("server-auth"))
-    implementation(ktor("server-auth-jwt"))
-    implementation(ktor("serialization-jackson"))
-    implementation(ktor("server-metrics-micrometer"))
-    implementation(ktor("server-content-negotiation"))
-    implementation(ktor("server-call-id"))
+    implementation(libs.ktor.serialization.jackson)
+    implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.auth.jwt)
+    implementation(libs.ktor.server.call.id)
+    implementation(libs.ktor.server.content.negotiation)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.metrics.micrometer)
+    implementation(libs.ktor.server.netty)
 
     // Ktor Client
-    implementation(ktor("client-core"))
-    implementation(ktor("client-auth"))
-    implementation(ktor("client-apache"))
-    implementation(ktor("client-jackson"))
-    implementation(ktor("client-content-negotiation"))
+    implementation(libs.ktor.client.apache)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.client.core)
 
-    implementation("com.natpryce:konfig:$konfig_version")
-    implementation("com.oracle.database.jdbc:ojdbc8:$ojdbc_version")
-    implementation("no.finn.unleash:unleash-client-java:$unleash_version")
-    implementation("io.micrometer:micrometer-registry-prometheus:$prometheus_version")
-    val jacksonVersion = "2.15.3"
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
+    // Metrics
+    implementation(libs.micrometer.registry.prometheus.deprecated)
+
+    // Database
+    implementation(libs.ojdbc8)
+
+    // Jackson
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.datatype.jsr310)
 
     // Test
-    testImplementation(kotlin("test"))
+    testImplementation(libs.kotlin.test.junit5)
 }
 
-application {
-    mainClass.set("no.nav.hjelpemidler.ApplicationKt")
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "21"
-}
-
-tasks.test {
-    useJUnitPlatform()
-}
-
-val fatJar = task("fatJar", type = org.gradle.jvm.tasks.Jar::class) {
-    archiveBaseName.set("${project.name}-fat")
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-    manifest {
-        attributes["Main-Class"] = application.mainClass
+spotless {
+    kotlin {
+        ktlint().editorConfigOverride(
+            mapOf(
+                "ktlint_standard_comment-wrapping" to "disabled",
+                "ktlint_standard_max-line-length" to "disabled",
+                "ktlint_standard_value-argument-comment" to "disabled",
+                "ktlint_standard_value-parameter-comment" to "disabled",
+            ),
+        )
     }
-    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
-    with(tasks.jar.get() as CopySpec)
-}
-
-tasks {
-    "build" {
-        dependsOn(fatJar)
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint()
     }
 }
+
+application { mainClass.set("no.nav.hjelpemidler.ApplicationKt") }
+kotlin { jvmToolchain(21) }
+tasks.test { useJUnitPlatform() }

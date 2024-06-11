@@ -1,11 +1,11 @@
 package no.nav.hjelpemidler
 
 import java.time.LocalDate
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import java.time.Month
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
-import java.time.Month
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 internal class LocalDateParsingTest {
     @Test

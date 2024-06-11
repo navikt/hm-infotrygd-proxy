@@ -22,7 +22,7 @@ internal object Configuration {
             "APPLICATION_PROFILE" to "prod",
 
             "HM_INFOTRYGD_PROXY_DB_NAME" to "INFOTRYGD_HJP",
-        )
+        ),
     )
 
     private val devProperties = ConfigurationMap(
@@ -30,7 +30,7 @@ internal object Configuration {
             "APPLICATION_PROFILE" to "dev",
 
             "HM_INFOTRYGD_PROXY_DB_NAME" to "INFOTRYGD_HJQ",
-        )
+        ),
     )
 
     private val localProperties = ConfigurationMap(
@@ -44,7 +44,7 @@ internal object Configuration {
 
             "AZURE_APP_WELL_KNOWN_URL" to "abc",
             "AZURE_APP_CLIENT_ID" to "abc",
-        )
+        ),
     )
 
     val application: Map<String, String> = mapOf(

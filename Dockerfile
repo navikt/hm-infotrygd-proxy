@@ -1,4 +1,5 @@
-FROM ghcr.io/navikt/baseimages/temurin:21
-COPY init.sh /init-scripts/init.sh
-COPY /build/libs/hm-infotrygd-proxy-fat-1.0-SNAPSHOT.jar app.jar
-
+FROM gcr.io/distroless/java21-debian12:nonroot
+COPY build/libs/hm-infotrygd-proxy-all.jar /app.jar
+ENV TZ="Europe/Oslo"
+EXPOSE 8080
+CMD ["/app.jar"]
