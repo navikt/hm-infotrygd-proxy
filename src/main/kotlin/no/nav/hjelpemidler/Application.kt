@@ -86,12 +86,12 @@ fun connectToInfotrygdDB() {
         logg.info { "Connecting to database" }
         dbConnection = dataSource.connection
 
-        logg.info("Fetching db metadata")
+        logg.info { "Fetching db metadata" }
         val dbmd = dbConnection!!.metaData
-        logg.info("Driver Name: " + dbmd.driverName)
-        logg.info("Driver Version: " + dbmd.driverVersion)
+        logg.info { "Driver Name: ${dbmd.driverName}" }
+        logg.info { "Driver Version: ${dbmd.driverVersion}" }
 
-        logg.info("Database connected, hm-infotrygd-proxy ready")
+        logg.info { "Database connected, hm-infotrygd-proxy ready" }
         ready.set(true)
     } catch (e: Exception) {
         logg.info(e) { "Exception while connecting to database" }
@@ -126,7 +126,7 @@ fun Application.module() {
 
     environment.monitor.subscribe(ApplicationStopping) {
         // Cleanup
-        logg.info("Cleaning up and stopping.")
+        logg.info { "Cleaning up and stopping." }
         dbConnection?.close()
     }
 
@@ -185,7 +185,7 @@ fun Application.module() {
 
                 try {
                     val reqs = call.receive<Array<VedtakResultatRequest>>()
-                    logg.info("Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests")
+                    logg.info { "Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests" }
 
                     /*
                     for (i in 1..reqs.size) {
@@ -209,7 +209,7 @@ fun Application.module() {
             post("/har-vedtak-for") {
                 try {
                     val req = call.receive<HarVedtakForRequest>()
-                    logg.info("Incoming authenticated request for /har-vedtak-for (fnr=MASKED, saksblokk=${req.saksblokk}, saksnr=${req.saksnr}, vedtaksDato=${req.vedtaksDato})")
+                    logg.info { "Incoming authenticated request for /har-vedtak-for (fnr: MASKED, saksblokk: ${req.saksblokk}, saksnr: ${req.saksnr}, vedtaksdato: ${req.vedtaksDato})" }
 
                     val res = withRetryIfDatabaseConnectionIsStale {
                         queryForDecision(req)
@@ -231,7 +231,7 @@ fun Application.module() {
             post("/har-vedtak-fra-for") {
                 try {
                     val req = call.receive<HarVedtakFraFørRequest>()
-                    logg.info("Incoming authenticated request for /har-vedtak-fra-for (fnr=MASKED)")
+                    logg.info { "Incoming authenticated request for /har-vedtak-fra-for (fnr: MASKED)" }
 
                     val res = withRetryIfDatabaseConnectionIsStale {
                         queryForHarVedtakFraFør(req)
@@ -253,7 +253,7 @@ fun Application.module() {
             post("/hent-saker-for-bruker") {
                 try {
                     val req = call.receive<HentSakerForBrukerRequest>()
-                    logg.info("Incoming authenticated request for /hent-saker-for-bruker")
+                    logg.info { "Incoming authenticated request for /hent-saker-for-bruker" }
 
                     val res = withRetryIfDatabaseConnectionIsStale {
                         queryForHentSakerForBruker(req)
@@ -285,7 +285,7 @@ fun getPreparedStatementDecisionResult(): PreparedStatement {
             WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
-    logg.info("DEBUG: SQL query being prepared: $query")
+    logg.info { "DEBUG: SQL query being prepared: $query" }
     return dbConnection!!.prepareStatement(query)
 }
 
@@ -297,7 +297,7 @@ fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
             WHERE TK_NR = ? AND F_NR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
-    logg.info("DEBUG: SQL query being prepared for PersonKeyExists-check: $query")
+    logg.info { "DEBUG: SQL query being prepared for PersonKeyExists-check: $query" }
     return dbConnection!!.prepareStatement(query)
 }
 
@@ -311,7 +311,7 @@ fun getPreparedStatementHasDecisionFor(): PreparedStatement {
             WHERE S10_VEDTAKSDATO = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
-    logg.info("DEBUG: SQL query being prepared: $query")
+    logg.info { "DEBUG: SQL query being prepared: $query" }
     return dbConnection!!.prepareStatement(query)
 }
 
@@ -328,7 +328,7 @@ fun getPreparedStatementHarVedtakFraFør(): PreparedStatement {
             AND S10_RESULTAT <> 'HB'
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
-    logg.info("DEBUG: SQL query being prepared: $query")
+    logg.info { "DEBUG: SQL query being prepared: $query" }
     return dbConnection!!.prepareStatement(query)
 }
 
@@ -359,7 +359,7 @@ fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
             AND SA_SAK_10.S01_PERSONKEY = SA_SAKSBLOKK_05.S01_PERSONKEY 
             AND SA_SAK_10.S01_PERSONKEY = SA_HENDELSE_20.S01_PERSONKEY
         """.trimIndent().split("\n").joinToString(" ")
-    logg.info("DEBUG: SQL query being prepared: $query")
+    logg.info { "DEBUG: SQL query being prepared: $query" }
     return dbConnection!!.prepareStatement(query)
 }
 
