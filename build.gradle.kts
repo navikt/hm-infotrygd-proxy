@@ -31,8 +31,9 @@ dependencies {
     // Metrics
     implementation(libs.micrometer.registry.prometheus.deprecated)
 
-    // Database
-    implementation(libs.ojdbc8)
+    // Oracle
+    implementation(libs.ojdbc11)
+    implementation(libs.ucp11)
 
     // Jackson
     implementation(libs.jackson.databind)
@@ -41,6 +42,9 @@ dependencies {
 
     // Test
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.mockk)
+    testRuntimeOnly(libs.h2)
 }
 
 spotless {

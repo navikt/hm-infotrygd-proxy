@@ -54,3 +54,6 @@ spec:
         - application: hm-soknad-api
           namespace: teamdigihot
           cluster: dev-gcp
+        - application: azure-token-generator
+          namespace: aura
+          cluster: dev-gcp

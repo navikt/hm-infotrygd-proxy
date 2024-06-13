@@ -21,113 +21,47 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.micrometer.core.instrument.Clock
-import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
-import io.micrometer.core.instrument.binder.kafka.KafkaConsumerMetrics
-import io.micrometer.core.instrument.binder.logging.LogbackMetrics
-import io.micrometer.core.instrument.binder.system.ProcessorMetrics
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import io.prometheus.client.CollectorRegistry
 import no.nav.hjelpemidler.configuration.Configuration
 import no.nav.hjelpemidler.domain.Fødselsnummer
 import no.nav.hjelpemidler.domain.tilInfotrygdFormat
-import no.nav.hjelpemidler.healtcheck.healtcheckApi
-import oracle.jdbc.OracleConnection
-import oracle.jdbc.pool.OracleDataSource
+import no.nav.hjelpemidler.healtcheck.internal
+import no.nav.hjelpemidler.infotrygd.proxy.database.Database
+import no.nav.hjelpemidler.infotrygd.proxy.database.createDataSource
 import org.slf4j.event.Level
 import java.math.BigInteger
 import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.PreparedStatement
-import java.sql.SQLException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
-import java.util.Properties
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.collections.set
 import kotlin.time.Duration
 import kotlin.time.measureTime
 
 private val logg = KotlinLogging.logger {}
 private val sikkerlogg = KotlinLogging.logger("tjenestekall")
 
-// TODO -> bytt global connection med connection pool med HikariCP
-private var dbConnection: Connection? = null
-private val ready = AtomicBoolean(false)
-
-private val dbSkjemaNavn by lazy { Configuration.HM_INFOTRYGD_PROXY_DB_NAME }
-
 fun main(args: Array<String>) = EngineMain.main(args)
 
-fun connectToInfotrygdDB() {
-    // Clean up resources if we have already had a database connection set up here that has now failed
-    ready.set(false)
-    dbConnection = null
-
-    // Set up a new connection
-    try {
-        sikkerlogg.info { "Connecting to Infotrygd database with db-config-url: ${Configuration.HM_INFOTRYGD_PROXY_DB_JDBC_URL}, db-config-username: ${Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME}" }
-
-        // Set up database connection
-
-        // TODO -> bytt med connection pool med HikariCP
-        val dataSource = OracleDataSource()
-        dataSource.url = Configuration.HM_INFOTRYGD_PROXY_DB_JDBC_URL
-        dataSource.connectionProperties = Properties().apply {
-            this[OracleConnection.CONNECTION_PROPERTY_USER_NAME] = Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME
-            this[OracleConnection.CONNECTION_PROPERTY_PASSWORD] = Configuration.HM_INFOTRYGD_PROXY_DB_PASSWORD
-            this[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
-        }
-
-        logg.info { "Connecting to database" }
-        dbConnection = dataSource.connection
-
-        logg.info { "Fetching db metadata" }
-        val dbmd = dbConnection!!.metaData
-        logg.info { "Driver Name: ${dbmd.driverName}" }
-        logg.info { "Driver Version: ${dbmd.driverVersion}" }
-
-        logg.info { "Database connected, hm-infotrygd-proxy ready" }
-        ready.set(true)
-    } catch (e: Exception) {
-        logg.info(e) { "Exception while connecting to database" }
-        throw e
-    }
-}
-
-// Meant to fix "java.sql.SQLException: ORA-02399: overskred maks. tilkoblingstid, du blir logget av", by reconnection to the database and retrying
-fun <T> withRetryIfDatabaseConnectionIsStale(block: () -> T): T {
-    var lastException: SQLException? = null
-    for (attempt in 1..3) { // We get three attempts
-        try {
-            return block() // Success
-        } catch (e: SQLException) {
-            lastException = e
-            if (e.toString().contains("ORA-02399")) {
-                logg.warn(e) { "Infotrygd replication database closed the connection due to their connection-max-life deadline, we reconnect and try again" }
-                connectToInfotrygdDB() // Reset database connection
-                continue // Retry if we have attempts left
-            }
-            throw e // Unhandled sql error, we throw up
-        }
-    }
-    throw lastException!! // No more attempts, so we throw the last exception we had
-}
-
-@Suppress("unused") // Referenced in application.conf
+/**
+ * Brukes i application.conf.
+ */
+@Suppress("unused")
 fun Application.module() {
-    connectToInfotrygdDB()
-    // Note: We do not want to set ready=false again, dbConnection.isValid() will have kubernetes restart our entire pod as it is closed below.
-    // and setting ready=false forces our /isAlive-endpoint to always say "ALIVE".
+    val dataSource = createDataSource {
+        jdbcUrl = Configuration.HM_INFOTRYGD_PROXY_DB_JDBC_URL
+        username = Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME
+        password = Configuration.HM_INFOTRYGD_PROXY_DB_PASSWORD
 
+        // this[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
+    }
+
+    val database = Database(dataSource, Configuration.HM_INFOTRYGD_PROXY_DB_NAME)
     environment.monitor.subscribe(ApplicationStopping) {
-        // Cleanup
-        logg.info { "Cleaning up and stopping." }
-        dbConnection?.close()
+        database.close()
     }
 
     installAuthentication()
@@ -155,20 +89,11 @@ fun Application.module() {
             CollectorRegistry.defaultRegistry,
             Clock.SYSTEM,
         )
-        meterBinders = listOf(
-            ClassLoaderMetrics(),
-            JvmMemoryMetrics(),
-            JvmGcMetrics(),
-            ProcessorMetrics(),
-            JvmThreadMetrics(),
-            LogbackMetrics(),
-            KafkaConsumerMetrics(),
-        )
     }
 
     routing {
         // Endpoints for Kubernetes unauthenticated health checks
-        healtcheckApi(ready, dbConnection)
+        internal(database)
 
         // Authenticated database proxy requests
         authenticate("aad") {
@@ -195,8 +120,8 @@ fun Application.module() {
                     }
                      */
 
-                    val res = withRetryIfDatabaseConnectionIsStale {
-                        queryForDecisionResult(reqs)
+                    val res = database.withConnection {
+                        queryForDecisionResult(it, reqs)
                     }
 
                     call.respond(res)
@@ -211,8 +136,8 @@ fun Application.module() {
                     val req = call.receive<HarVedtakForRequest>()
                     logg.info { "Incoming authenticated request for /har-vedtak-for (fnr: MASKED, saksblokk: ${req.saksblokk}, saksnr: ${req.saksnr}, vedtaksdato: ${req.vedtaksDato})" }
 
-                    val res = withRetryIfDatabaseConnectionIsStale {
-                        queryForDecision(req)
+                    val res = database.withConnection {
+                        queryForDecision(it, req)
                     }
 
                     // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
@@ -233,8 +158,8 @@ fun Application.module() {
                     val req = call.receive<HarVedtakFraFørRequest>()
                     logg.info { "Incoming authenticated request for /har-vedtak-fra-for (fnr: MASKED)" }
 
-                    val res = withRetryIfDatabaseConnectionIsStale {
-                        queryForHarVedtakFraFør(req)
+                    val res = database.withConnection {
+                        queryForHarVedtakFraFør(it, req)
                     }
 
                     // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
@@ -255,8 +180,8 @@ fun Application.module() {
                     val req = call.receive<HentSakerForBrukerRequest>()
                     logg.info { "Incoming authenticated request for /hent-saker-for-bruker" }
 
-                    val res = withRetryIfDatabaseConnectionIsStale {
-                        queryForHentSakerForBruker(req)
+                    val res = database.withConnection {
+                        queryForHentSakerForBruker(it, req)
                     }
 
                     // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
@@ -275,53 +200,53 @@ fun Application.module() {
     }
 }
 
-fun getPreparedStatementDecisionResult(): PreparedStatement {
+fun getPreparedStatementDecisionResult(connection: Connection): PreparedStatement {
     // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
     // even if we are connected to the production db: INFOTRYGD_P
     val query =
         """
             SELECT S10_RESULTAT, S10_VEDTAKSDATO, S10_KAPITTELNR, S10_VALG, S10_UNDERVALG, S10_TYPE
-            FROM $dbSkjemaNavn.SA_SAK_10
+            FROM SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
     logg.info { "DEBUG: SQL query being prepared: $query" }
-    return dbConnection!!.prepareStatement(query)
+    return connection.prepareStatement(query)
 }
 
-fun getPreparedStatementDoesPersonkeyExist(): PreparedStatement {
+fun getPreparedStatementDoesPersonKeyExist(connection: Connection): PreparedStatement {
     val query =
         """
-            SELECT count(*) AS number_of_rows
-            FROM $dbSkjemaNavn.SA_SAK_10
+            SELECT COUNT(1) AS antall
+            FROM SA_SAK_10
             WHERE TK_NR = ? AND F_NR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
     logg.info { "DEBUG: SQL query being prepared for PersonKeyExists-check: $query" }
-    return dbConnection!!.prepareStatement(query)
+    return connection.prepareStatement(query)
 }
 
-fun getPreparedStatementHasDecisionFor(): PreparedStatement {
+fun getPreparedStatementHasDecisionFor(connection: Connection): PreparedStatement {
     // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
     // even if we are connected to the production db: INFOTRYGD_P
     val query =
         """
             SELECT 1
-            FROM $dbSkjemaNavn.SA_SAK_10
+            FROM SA_SAK_10
             WHERE S10_VEDTAKSDATO = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
     logg.info { "DEBUG: SQL query being prepared: $query" }
-    return dbConnection!!.prepareStatement(query)
+    return connection.prepareStatement(query)
 }
 
-fun getPreparedStatementHarVedtakFraFør(): PreparedStatement {
+fun getPreparedStatementHarVedtakFraFør(connection: Connection): PreparedStatement {
     // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
     // even if we are connected to the production db: INFOTRYGD_P
     val query =
         """
             SELECT 1
-            FROM $dbSkjemaNavn.SA_SAK_10
+            FROM SA_SAK_10
             WHERE F_NR = ?
             AND S10_RESULTAT <> 'A '
             AND S10_RESULTAT <> 'H '
@@ -329,10 +254,10 @@ fun getPreparedStatementHarVedtakFraFør(): PreparedStatement {
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
         """.trimIndent().split("\n").joinToString(" ")
     logg.info { "DEBUG: SQL query being prepared: $query" }
-    return dbConnection!!.prepareStatement(query)
+    return connection.prepareStatement(query)
 }
 
-fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
+fun getPreparedStatementHentSakerForBruker(connection: Connection): PreparedStatement {
     // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
     // even if we are connected to the production db: INFOTRYGD_P
     val query =
@@ -350,17 +275,17 @@ fun getPreparedStatementHentSakerForBruker(): PreparedStatement {
                 S05_BRUKERID, 
                 S20_OPPLYSNING   
             FROM 
-                $dbSkjemaNavn.SA_SAK_10, 
-                $dbSkjemaNavn.SA_SAKSBLOKK_05, 
-                $dbSkjemaNavn.SA_HENDELSE_20
+                SA_SAK_10, 
+                SA_SAKSBLOKK_05, 
+                SA_HENDELSE_20
             WHERE 
-                SA_SAK_10.F_NR = 48041423897
+                SA_SAK_10.F_NR = ?
             AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
             AND SA_SAK_10.S01_PERSONKEY = SA_SAKSBLOKK_05.S01_PERSONKEY 
             AND SA_SAK_10.S01_PERSONKEY = SA_HENDELSE_20.S01_PERSONKEY
         """.trimIndent().split("\n").joinToString(" ")
     logg.info { "DEBUG: SQL query being prepared: $query" }
-    return dbConnection!!.prepareStatement(query)
+    return connection.prepareStatement(query)
 }
 
 data class VedtakResultatRequest(
@@ -426,9 +351,9 @@ private val dateFormatter = DateTimeFormatterBuilder()
     .parseStrict()
     .toFormatter()
 
-fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResultatResponse> {
+fun queryForDecisionResult(connection: Connection, reqs: Array<VedtakResultatRequest>): Array<VedtakResultatResponse> {
     val results = mutableListOf<VedtakResultatResponse>()
-    getPreparedStatementDecisionResult().use { pstmt ->
+    getPreparedStatementDecisionResult(connection).use { pstmt ->
         for (req in reqs) {
             // Check if request looks right
             if (req.fnr.trim().length != 11) {
@@ -557,13 +482,13 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
                 error =
                     "no such vedtak in the database (tknr=${req.tknr}, saksblokk=${req.saksblokk}, saksnr=${req.saksnr}, hashedIdent=$hashedIdent)"
 
-                getPreparedStatementDoesPersonkeyExist().use { pstmt2 ->
+                getPreparedStatementDoesPersonKeyExist(connection).use { pstmt2 ->
                     pstmt2.clearParameters()
                     pstmt2.setString(1, req.tknr) // TK_NR
                     pstmt2.setString(2, fnr) // F_NR
                     pstmt2.executeQuery().use { rs ->
                         if (rs.next()) {
-                            val numberOfRows = rs.getInt("number_of_rows")
+                            val numberOfRows = rs.getInt("antall")
                             if (numberOfRows > 0) {
                                 error += "; however personKey has rows in the table: #" + numberOfRows
                                     .toString()
@@ -613,9 +538,9 @@ fun queryForDecisionResult(reqs: Array<VedtakResultatRequest>): Array<VedtakResu
     return results.toTypedArray()
 }
 
-fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
+fun queryForDecision(connection: Connection, req: HarVedtakForRequest): HarVedtakForResponse {
     var result = HarVedtakForResponse(false)
-    getPreparedStatementHasDecisionFor().use { pstmt ->
+    getPreparedStatementHasDecisionFor(connection).use { pstmt ->
         // Check if request looks right
         if (req.fnr.length != 11) logg.error("error: request has a fnr of length: ${req.fnr.length} != 11")
         if (req.saksblokk.length != 1) logg.error("error: request has an saksblokk of length: ${req.saksblokk.length} != 1")
@@ -640,9 +565,9 @@ fun queryForDecision(req: HarVedtakForRequest): HarVedtakForResponse {
     return result
 }
 
-fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResponse {
+fun queryForHarVedtakFraFør(connection: Connection, req: HarVedtakFraFørRequest): HarVedtakFraFørResponse {
     var result = HarVedtakFraFørResponse(false)
-    getPreparedStatementHarVedtakFraFør().use { pstmt ->
+    getPreparedStatementHarVedtakFraFør(connection).use { pstmt ->
         // Check if request looks right
         if (req.fnr.length != 11) logg.error("error: request has a fnr of length: ${req.fnr.length} != 11")
 
@@ -661,9 +586,9 @@ fun queryForHarVedtakFraFør(req: HarVedtakFraFørRequest): HarVedtakFraFørResp
     return result
 }
 
-fun queryForHentSakerForBruker(req: HentSakerForBrukerRequest): List<SakerForBrukerResponse> {
+fun queryForHentSakerForBruker(connection: Connection, req: HentSakerForBrukerRequest): List<SakerForBrukerResponse> {
     val saker: MutableList<SakerForBrukerResponse> = mutableListOf()
-    getPreparedStatementHentSakerForBruker().use { pstmt ->
+    getPreparedStatementHentSakerForBruker(connection).use { pstmt ->
         val fnr = Fødselsnummer(req.fnr)
 
         pstmt.clearParameters()
