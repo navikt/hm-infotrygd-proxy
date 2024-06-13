@@ -1,4 +1,4 @@
-package no.nav.hjelpemidler.domain
+package no.nav.hjelpemidler.infotrygd.proxy.domain
 
 data class Fødselsnummer(val value: String) {
     private val elevenDigits = Regex("\\d{11}")

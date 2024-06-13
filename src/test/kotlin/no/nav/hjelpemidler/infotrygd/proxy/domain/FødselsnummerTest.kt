@@ -1,4 +1,4 @@
-package no.nav.hjelpemidler.domain
+package no.nav.hjelpemidler.infotrygd.proxy.domain
 
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test

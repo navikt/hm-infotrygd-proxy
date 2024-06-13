@@ -1,4 +1,4 @@
-package no.nav.hjelpemidler.healtcheck
+package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.ktor.http.ContentType
 import io.ktor.server.application.call
@@ -10,7 +10,7 @@ import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.common.TextFormat
 import no.nav.hjelpemidler.infotrygd.proxy.database.Database
 
-fun Route.internal(database: Database) {
+fun Route.internalApi(database: Database) {
     get("/isalive") {
         /*
         if (!database.isValid()) {

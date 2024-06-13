@@ -1,4 +1,4 @@
-package no.nav.hjelpemidler.metrics
+package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.Gauge

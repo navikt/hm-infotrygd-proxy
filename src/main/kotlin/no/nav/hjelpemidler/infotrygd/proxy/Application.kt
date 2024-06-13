@@ -1,4 +1,4 @@
-package no.nav.hjelpemidler
+package no.nav.hjelpemidler.infotrygd.proxy
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
@@ -24,12 +24,11 @@ import io.micrometer.core.instrument.Clock
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import io.prometheus.client.CollectorRegistry
-import no.nav.hjelpemidler.configuration.Configuration
-import no.nav.hjelpemidler.domain.Fødselsnummer
-import no.nav.hjelpemidler.domain.tilInfotrygdFormat
-import no.nav.hjelpemidler.healtcheck.internal
+import no.nav.hjelpemidler.configuration.Environment
 import no.nav.hjelpemidler.infotrygd.proxy.database.Database
 import no.nav.hjelpemidler.infotrygd.proxy.database.createDataSource
+import no.nav.hjelpemidler.infotrygd.proxy.domain.Fødselsnummer
+import no.nav.hjelpemidler.infotrygd.proxy.domain.tilInfotrygdFormat
 import org.slf4j.event.Level
 import java.math.BigInteger
 import java.security.MessageDigest
@@ -93,7 +92,7 @@ fun Application.module() {
 
     routing {
         // Endpoints for Kubernetes unauthenticated health checks
-        internal(database)
+        internalApi(database)
 
         // Authenticated database proxy requests
         authenticate("aad") {
@@ -140,8 +139,8 @@ fun Application.module() {
                         queryForDecision(it, req)
                     }
 
-                    // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
-                    if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
+                    // Allow mocking order lines from OEBS in dev even with a static infotrygd-database...
+                    if (Environment.current.tier.isDev) {
                         res.resultat = true
                     }
 
@@ -163,7 +162,7 @@ fun Application.module() {
                     }
 
                     // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
-                    if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
+                    if (Environment.current.tier.isDev) {
                         // res.harVedtakFraFør = true
                     }
 

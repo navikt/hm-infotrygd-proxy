@@ -4,11 +4,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import no.nav.hjelpemidler.getPreparedStatementDecisionResult
-import no.nav.hjelpemidler.getPreparedStatementDoesPersonKeyExist
-import no.nav.hjelpemidler.getPreparedStatementHarVedtakFraFør
-import no.nav.hjelpemidler.getPreparedStatementHasDecisionFor
-import no.nav.hjelpemidler.getPreparedStatementHentSakerForBruker
 import no.nav.hjelpemidler.infotrygd.proxy.database.JdbcOperations
 import java.sql.Connection
 import kotlin.test.BeforeTest

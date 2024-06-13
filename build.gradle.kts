@@ -6,12 +6,11 @@ plugins {
 
 dependencies {
     implementation(libs.kotlin.stdlib)
-    implementation(libs.konfig.deprecated)
+    implementation(libs.hm.core)
 
     // Logging
     implementation(libs.kotlin.logging)
-    runtimeOnly(libs.logback.classic)
-    runtimeOnly(libs.logstash.logback.encoder)
+    runtimeOnly(libs.bundles.logging.runtime)
 
     // Ktor Server
     implementation(libs.ktor.serialization.jackson)
@@ -22,11 +21,6 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.metrics.micrometer)
     implementation(libs.ktor.server.netty)
-
-    // Ktor Client
-    implementation(libs.ktor.client.apache)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.client.core)
 
     // Metrics
     implementation(libs.micrometer.registry.prometheus.deprecated)

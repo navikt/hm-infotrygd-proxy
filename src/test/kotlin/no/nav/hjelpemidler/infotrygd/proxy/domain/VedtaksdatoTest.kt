@@ -1,4 +1,4 @@
-package no.nav.hjelpemidler
+package no.nav.hjelpemidler.infotrygd.proxy.domain
 
 import java.time.LocalDate
 import java.time.Month
@@ -7,10 +7,10 @@ import java.time.temporal.ChronoField
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-internal class LocalDateParsingTest {
+class VedtaksdatoTest {
     @Test
-    fun `Parse vedtaksdato to LocalDate`() {
-        val vedtaksDate: String? = "22122012"
+    fun `Konverter vedtaksdato til LocalDate`() {
+        val vedtaksdato = "22122012"
 
         val formatter = DateTimeFormatterBuilder()
             .parseCaseInsensitive()
@@ -23,10 +23,10 @@ internal class LocalDateParsingTest {
             .parseStrict()
             .toFormatter()
 
-        val parsedVedtaksDate = LocalDate.parse(vedtaksDate!!, formatter)
+        val parsedVedtaksdato = LocalDate.parse(vedtaksdato, formatter)
 
-        assertEquals(2012, parsedVedtaksDate.year)
-        assertEquals(Month.DECEMBER, parsedVedtaksDate.month)
-        assertEquals(22, parsedVedtaksDate.dayOfMonth)
+        assertEquals(2012, parsedVedtaksdato.year)
+        assertEquals(Month.DECEMBER, parsedVedtaksdato.month)
+        assertEquals(22, parsedVedtaksdato.dayOfMonth)
     }
 }

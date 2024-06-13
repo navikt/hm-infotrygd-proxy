@@ -54,3 +54,6 @@ spec:
         - application: hm-soknad-api
           namespace: teamdigihot
           cluster: prod-gcp
+  env:
+    - name: HM_INFOTRYGD_PROXY_DB_NAME
+      value: INFOTRYGD_HJP
