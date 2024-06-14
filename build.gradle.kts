@@ -59,6 +59,6 @@ spotless {
     }
 }
 
-application { mainClass.set("no.nav.hjelpemidler.ApplicationKt") }
+application { mainClass.set("no.nav.hjelpemidler.infotrygd.proxy.ApplicationKt") }
 kotlin { jvmToolchain(21) }
 tasks.test { useJUnitPlatform() }
