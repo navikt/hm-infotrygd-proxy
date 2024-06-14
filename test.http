@@ -1,11 +1,51 @@
 ### Lag token: https://azure-token-generator.intern.dev.nav.no/api/m2m?aud=dev-fss:teamdigihot:hm-infotrygd-proxy
 
-### 26848497710
+###
 POST https://hm-infotrygd-proxy.dev-fss-pub.nais.io/har-vedtak-fra-for
 Accept: application/json
 Content-Type: application/json
-Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IkwxS2ZLRklfam5YYndXYzIyeFp4dzFzVUhIMCJ9.eyJhdWQiOiI2YTAxY2EwNS02ZjliLTQ4NjAtYmNhNy02MzAxNTRiMDQ3YjkiLCJpc3MiOiJodHRwczovL2xvZ2luLm1pY3Jvc29mdG9ubGluZS5jb20vOTY2YWM1NzItZjViNy00YmJlLWFhODgtYzc2NDE5YzBmODUxL3YyLjAiLCJpYXQiOjE3MTgyNzIyMjgsIm5iZiI6MTcxODI3MjIyOCwiZXhwIjoxNzE4Mjc2MTI4LCJhaW8iOiJBU1FBMi84WEFBQUFJc0x4ZEwzbVRld0lKZC9JS0xxcTdiRFF1bHU2OHZFSXdCdXFPdXpSYzJZPSIsImF6cCI6IjVmMjhjMTBmLWVjZDUtNDVlZi05NmI4LWRiNDMxMTgwMmU4OSIsImF6cGFjciI6IjEiLCJpZHR5cCI6ImFwcCIsIm9pZCI6ImZiZDEzYTBlLTBhNzQtNDc3ZC05NTNhLTlmNGI1MjBhMGU4ZSIsInJoIjoiMC5BVWNBY3NWcWxyZjF2a3VxaU1ka0djRDRVUVhLQVdxYmIyQkl2S2RqQVZTd1I3a05BUUEuIiwicm9sZXMiOlsiYWNjZXNzX2FzX2FwcGxpY2F0aW9uIl0sInN1YiI6ImZiZDEzYTBlLTBhNzQtNDc3ZC05NTNhLTlmNGI1MjBhMGU4ZSIsInRpZCI6Ijk2NmFjNTcyLWY1YjctNGJiZS1hYTg4LWM3NjQxOWMwZjg1MSIsInV0aSI6InpQZUJvc3FHMDBpdEVkME01RjBPQUEiLCJ2ZXIiOiIyLjAiLCJhenBfbmFtZSI6ImRldi1nY3A6YXVyYTphenVyZS10b2tlbi1nZW5lcmF0b3IifQ.TpNzcAG4MxpG4gzLBsmmorOqBmIv5tMdM6XeEBHyc8GIRS6dSp63H33POeI_Nj5zKi84GCMLZLh-oZiOPA0arD51bxoKMVCDrQdUwvk7XxTWXAWsiuvULQpnthHBo77G-HzjA9X3oryFTZBHmZNONvNKvta_qBxFvjfB_Fq4SLIkYOhFDonbtWfsXGeyp_S4IWA5SAhjjT4t4CoU_rrmksjogmPrrFKxyJ6c5EjZ6MjXTGWOxN1wjJIMfLI24apDT_YzHt8Vecf_ZBx0ZNfwzo-YYpcWSbNrpz9I-JBjmmi6_K2FRvA8LS0rR4GAGM5QszY5g2V4hMPQBGH_cQplIA
+Authorization: Bearer fixme
 
 {
-  "fnr": "26848497710"
+  "fnr": "07045943989"
+}
+
+###
+POST http://localhost:8080/har-vedtak-fra-for
+Accept: application/json
+Content-Type: application/json
+
+{
+  "fnr": "07045943989"
+}
+
+###
+POST http://localhost:8080/vedtak-resultat
+Accept: application/json
+Content-Type: application/json
+
+[
+  {
+    "id": "13867eab-b958-440d-bdd3-3ec1a3696215",
+    "fnr": "07045943989",
+    "tknr": "3118",
+    "saksblokk": "A",
+    "saksnr": "11"
+  },
+  {
+    "id": "a0e22144-f011-46da-b41f-f8acf2063e02",
+    "fnr": "07045943989",
+    "tknr": "3118",
+    "saksblokk": "B",
+    "saksnr": "12"
+  }
+]
+
+###
+POST http://localhost:8080/hent-saker-for-bruker
+Accept: application/json
+Content-Type: application/json
+
+{
+  "fnr": "07045943989"
 }

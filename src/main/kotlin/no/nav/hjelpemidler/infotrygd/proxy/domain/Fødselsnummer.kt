@@ -1,17 +1,31 @@
 package no.nav.hjelpemidler.infotrygd.proxy.domain
 
-data class Fødselsnummer(val value: String) {
-    private val elevenDigits = Regex("\\d{11}")
+import com.fasterxml.jackson.annotation.JsonValue
 
+data class Fødselsnummer(@JsonValue val value: String) {
     init {
-        if (!elevenDigits.matches(value)) {
-            throw IllegalArgumentException("$value er ikke gyldig fødselsnummer")
+        require(value.matches(elevenDigits)) {
+            "'$value' er ikke et gyldig fødselsnummer"
         }
     }
+
+    /**
+     * Infotrygd har snudd om på fødselsdatoen i fødselsnummeret slik at det
+     * blir på formen ååmmddxxxxx i stedet for det vanlige ddmmååxxxxx.
+     */
+    fun tilInfotrygdformat(): String = byttFormat(value)
+
+    override fun toString(): String = value
 }
 
 /**
- * Infotrygd har snudd om på fødselsdatoen i fødselsnummeret slik at det blir på formen ååmmddxxxxx i stedet for det vanlige ddmmååxxxxx
+ * Infotrygd har snudd om på fødselsdatoen i fødselsnummeret slik at det
+ * blir på formen ååmmddxxxxx i stedet for det vanlige ddmmååxxxxx.
  */
-fun Fødselsnummer.tilInfotrygdFormat(): String =
-    "${this.value.substring(4, 6)}${this.value.substring(2, 4)}${this.value.substring(0, 2)}${this.value.substring(6)}"
+fun fødselsnummerFraInfotrygd(value: String): Fødselsnummer = Fødselsnummer(byttFormat(value))
+
+private val elevenDigits: Regex = Regex("\\d{11}")
+
+private fun byttFormat(value: String): String {
+    return "${value.substring(4, 6)}${value.substring(2, 4)}${value.substring(0, 2)}${value.substring(6)}"
+}

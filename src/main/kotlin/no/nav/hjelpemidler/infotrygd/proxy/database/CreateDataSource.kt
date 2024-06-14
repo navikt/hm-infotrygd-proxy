@@ -8,6 +8,7 @@ class DataSourceConfiguration {
     var jdbcUrl: String? = null
     var username: String? = null
     var password: String? = null
+    var databaseName: String? = null
 }
 
 fun createDataSource(block: DataSourceConfiguration.() -> Unit): DataSource {
@@ -17,5 +18,6 @@ fun createDataSource(block: DataSourceConfiguration.() -> Unit): DataSource {
         url = configuration.jdbcUrl
         user = configuration.username
         password = configuration.password
+        databaseName = configuration.databaseName
     }
 }

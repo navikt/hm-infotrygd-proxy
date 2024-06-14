@@ -1,14 +1,13 @@
 package no.nav.hjelpemidler.infotrygd.proxy
 
-import io.prometheus.client.CollectorRegistry
-import io.prometheus.client.Gauge
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
+import java.util.concurrent.atomic.AtomicLong
 
-internal object Prometheus {
-    private val collectorRegistry: CollectorRegistry = CollectorRegistry.defaultRegistry
+@Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+object Prometheus {
+    val registry: PrometheusMeterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
-    val infotrygdDbAvailable: Gauge = Gauge
-        .build()
-        .name("hm_infotrygd_proxy_infotrygd_db_available")
-        .help("Infotrygd replika-database tilgjengelig")
-        .register(collectorRegistry)
+    val infotrygdDatabaseAvailable: AtomicLong =
+        registry.gauge("hm_infotrygd_proxy_infotrygd_database_available", AtomicLong(0))
 }

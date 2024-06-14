@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
@@ -20,27 +19,12 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
-import io.micrometer.core.instrument.Clock
-import io.micrometer.prometheus.PrometheusConfig
-import io.micrometer.prometheus.PrometheusMeterRegistry
-import io.prometheus.client.CollectorRegistry
 import no.nav.hjelpemidler.configuration.Environment
 import no.nav.hjelpemidler.infotrygd.proxy.database.Database
 import no.nav.hjelpemidler.infotrygd.proxy.database.createDataSource
-import no.nav.hjelpemidler.infotrygd.proxy.domain.Fødselsnummer
-import no.nav.hjelpemidler.infotrygd.proxy.domain.tilInfotrygdFormat
 import org.slf4j.event.Level
-import java.math.BigInteger
-import java.security.MessageDigest
-import java.sql.Connection
-import java.sql.PreparedStatement
-import java.time.LocalDate
-import java.time.format.DateTimeFormatterBuilder
-import java.time.temporal.ChronoField
-import kotlin.time.Duration
-import kotlin.time.measureTime
 
-private val logg = KotlinLogging.logger {}
+private val log = KotlinLogging.logger {}
 private val sikkerlogg = KotlinLogging.logger("tjenestekall")
 
 fun main(args: Array<String>) = EngineMain.main(args)
@@ -50,21 +34,7 @@ fun main(args: Array<String>) = EngineMain.main(args)
  */
 @Suppress("unused")
 fun Application.module() {
-    val dataSource = createDataSource {
-        jdbcUrl = Configuration.HM_INFOTRYGD_PROXY_DB_JDBC_URL
-        username = Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME
-        password = Configuration.HM_INFOTRYGD_PROXY_DB_PASSWORD
-
-        // this[OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH] = "20"
-    }
-
-    val database = Database(dataSource, Configuration.HM_INFOTRYGD_PROXY_DB_NAME)
-    environment.monitor.subscribe(ApplicationStopping) {
-        database.close()
-    }
-
     installAuthentication()
-
     install(ContentNegotiation) {
         jackson {
             registerModule(JavaTimeModule())
@@ -72,559 +42,60 @@ fun Application.module() {
             disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         }
     }
-
     install(CallLogging) {
         level = Level.TRACE
         filter { call ->
-            !call.request.path().startsWith("/internal") &&
-                !call.request.path().startsWith("/isalive") &&
-                !call.request.path().startsWith("/isready")
+            val path = call.request.path()
+            !(path.startsWith("/internal") || path.startsWith("/isalive") || path.startsWith("/isready"))
         }
     }
 
-    install(MicrometerMetrics) {
-        registry = PrometheusMeterRegistry(
-            PrometheusConfig.DEFAULT,
-            CollectorRegistry.defaultRegistry,
-            Clock.SYSTEM,
-        )
+    install(MicrometerMetrics) { registry = Prometheus.registry }
+
+    val dataSource = createDataSource {
+        jdbcUrl = Configuration.HM_INFOTRYGD_PROXY_DB_JDBC_URL
+        username = Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME
+        password = Configuration.HM_INFOTRYGD_PROXY_DB_PASSWORD
+        databaseName = Configuration.HM_INFOTRYGD_PROXY_DB_NAME
     }
 
-    routing {
-        // Endpoints for Kubernetes unauthenticated health checks
-        internalApi(database)
+    val database = Database(dataSource)
+    environment.monitor.subscribe(ApplicationStopping) {
+        database.close()
+    }
 
-        // Authenticated database proxy requests
+    val infotrygdService = InfotrygdService(database)
+
+    routing {
+        healthCheckApi(database)
+
         authenticate("aad") {
             post("/vedtak-resultat") {
-                /*
-                // For testing infotrygd down-time
-                call.respondText(
-                    """
-                        {"error": "testing down-time measurements"}
-                    """.trimIndent(), ContentType.Application.Json, HttpStatusCode.InternalServerError
-                )
-                return@post
-                 */
-
-                try {
-                    val reqs = call.receive<Array<VedtakResultatRequest>>()
-                    logg.info { "Incoming authenticated request for /vedtak-resultat, with ${reqs.size} batch requests" }
-
-                    /*
-                    for (i in 1..reqs.size) {
-                        val req = reqs[i-1]
-                        val reqInner = VedtakResultatRequest(req.id, req.tknr, "[MASKED]", req.saksblokk, req.saksnr)
-                        logg.info("– [$i/${reqs.size}] $reqInner")
-                    }
-                     */
-
-                    val res = database.withConnection {
-                        queryForDecisionResult(it, reqs)
-                    }
-
-                    call.respond(res)
-                } catch (e: Exception) {
-                    logg.error(e) { "Exception thrown during processing" }
-                    call.respond(HttpStatusCode.InternalServerError, e.message ?: "Unknown error")
-                    return@post
-                }
+                // fixme -> eksisterende løsning støtter at noen av requestene er ugyldige og svarer med en response for disse, trenger vi faktisk det?
+                val requests = call.receive<List<VedtaksresultatRequest>>()
+                val response = infotrygdService.hentVedtaksresultat(requests)
+                call.respond(response)
             }
+
             post("/har-vedtak-for") {
-                try {
-                    val req = call.receive<HarVedtakForRequest>()
-                    logg.info { "Incoming authenticated request for /har-vedtak-for (fnr: MASKED, saksblokk: ${req.saksblokk}, saksnr: ${req.saksnr}, vedtaksdato: ${req.vedtaksDato})" }
-
-                    val res = database.withConnection {
-                        queryForDecision(it, req)
-                    }
-
-                    // Allow mocking order lines from OEBS in dev even with a static infotrygd-database...
-                    if (Environment.current.tier.isDev) {
-                        res.resultat = true
-                    }
-
-                    call.respond(res)
-                } catch (e: Exception) {
-                    logg.error(e) { "Exception thrown during processing" }
-                    call.respond(HttpStatusCode.InternalServerError, e.message ?: "Unknown error")
-                    return@post
-                }
+                val request = call.receive<HarVedtakForRequest>()
+                val response = infotrygdService.harVedtakFor(request)
+                if (Environment.current.tier.isDev) response.resultat = true
+                call.respond(response)
             }
 
             post("/har-vedtak-fra-for") {
-                try {
-                    val req = call.receive<HarVedtakFraFørRequest>()
-                    logg.info { "Incoming authenticated request for /har-vedtak-fra-for (fnr: MASKED)" }
-
-                    val res = database.withConnection {
-                        queryForHarVedtakFraFør(it, req)
-                    }
-
-                    // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
-                    if (Environment.current.tier.isDev) {
-                        // res.harVedtakFraFør = true
-                    }
-
-                    call.respond(res)
-                } catch (e: Exception) {
-                    logg.error(e) { "Exception thrown during processing" }
-                    call.respond(HttpStatusCode.InternalServerError, e.message ?: "Unknown error")
-                    return@post
-                }
+                val request = call.receive<HarVedtakFraFørRequest>()
+                val response = infotrygdService.harVedtakFraFør(request.fnr)
+                call.respond(response)
             }
 
+            // fixme -> slett denne, ser ikke ut som den er i bruk
             post("/hent-saker-for-bruker") {
-                try {
-                    val req = call.receive<HentSakerForBrukerRequest>()
-                    logg.info { "Incoming authenticated request for /hent-saker-for-bruker" }
-
-                    val res = database.withConnection {
-                        queryForHentSakerForBruker(it, req)
-                    }
-
-                    // Allow mocking orderlines from OEBS in dev even with a static infotrygd-database...
-                    // if (Configuration.application["APPLICATION_PROFILE"]!! == "dev") {
-                    //  res.resultat = true
-                    // }
-
-                    call.respond(res)
-                } catch (e: Exception) {
-                    logg.error(e) { "Feil med henting av saker for bruker" }
-                    call.respond(HttpStatusCode.InternalServerError, "Feil med henting av saker for bruker: $e")
-                    return@post
-                }
+                val request = call.receive<HentSakerForBrukerRequest>()
+                val response = infotrygdService.hentSakerForBruker(request.fnr)
+                call.respond(response)
             }
         }
     }
-}
-
-fun getPreparedStatementDecisionResult(connection: Connection): PreparedStatement {
-    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
-    // even if we are connected to the production db: INFOTRYGD_P
-    val query =
-        """
-            SELECT S10_RESULTAT, S10_VEDTAKSDATO, S10_KAPITTELNR, S10_VALG, S10_UNDERVALG, S10_TYPE
-            FROM SA_SAK_10
-            WHERE TK_NR = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
-            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-        """.trimIndent().split("\n").joinToString(" ")
-    logg.info { "DEBUG: SQL query being prepared: $query" }
-    return connection.prepareStatement(query)
-}
-
-fun getPreparedStatementDoesPersonKeyExist(connection: Connection): PreparedStatement {
-    val query =
-        """
-            SELECT COUNT(1) AS antall
-            FROM SA_SAK_10
-            WHERE TK_NR = ? AND F_NR = ?
-            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-        """.trimIndent().split("\n").joinToString(" ")
-    logg.info { "DEBUG: SQL query being prepared for PersonKeyExists-check: $query" }
-    return connection.prepareStatement(query)
-}
-
-fun getPreparedStatementHasDecisionFor(connection: Connection): PreparedStatement {
-    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
-    // even if we are connected to the production db: INFOTRYGD_P
-    val query =
-        """
-            SELECT 1
-            FROM SA_SAK_10
-            WHERE S10_VEDTAKSDATO = ? AND F_NR = ? AND S05_SAKSBLOKK = ? AND S10_SAKSNR = ?
-            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-        """.trimIndent().split("\n").joinToString(" ")
-    logg.info { "DEBUG: SQL query being prepared: $query" }
-    return connection.prepareStatement(query)
-}
-
-fun getPreparedStatementHarVedtakFraFør(connection: Connection): PreparedStatement {
-    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
-    // even if we are connected to the production db: INFOTRYGD_P
-    val query =
-        """
-            SELECT 1
-            FROM SA_SAK_10
-            WHERE F_NR = ?
-            AND S10_RESULTAT <> 'A '
-            AND S10_RESULTAT <> 'H '
-            AND S10_RESULTAT <> 'HB'
-            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-        """.trimIndent().split("\n").joinToString(" ")
-    logg.info { "DEBUG: SQL query being prepared: $query" }
-    return connection.prepareStatement(query)
-}
-
-fun getPreparedStatementHentSakerForBruker(connection: Connection): PreparedStatement {
-    // Filtering for DB_SPLIT = HJ or 99 so that we only look at data that belongs to us
-    // even if we are connected to the production db: INFOTRYGD_P
-    val query =
-        """
-            SELECT 
-                SA_SAK_10.F_NR, 
-                S10_VEDTAKSDATO, 
-                S10_RESULTAT, 
-                S10_MOTTATTDATO, 
-                S10_KAPITTELNR, 
-                S10_VALG, 
-                S10_UNDERVALG, 
-                S10_SAKSNR, 
-                SA_SAK_10.S05_SAKSBLOKK,  
-                S05_BRUKERID, 
-                S20_OPPLYSNING   
-            FROM 
-                SA_SAK_10, 
-                SA_SAKSBLOKK_05, 
-                SA_HENDELSE_20
-            WHERE 
-                SA_SAK_10.F_NR = ?
-            AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-            AND SA_SAK_10.S01_PERSONKEY = SA_SAKSBLOKK_05.S01_PERSONKEY 
-            AND SA_SAK_10.S01_PERSONKEY = SA_HENDELSE_20.S01_PERSONKEY
-        """.trimIndent().split("\n").joinToString(" ")
-    logg.info { "DEBUG: SQL query being prepared: $query" }
-    return connection.prepareStatement(query)
-}
-
-data class VedtakResultatRequest(
-    val id: String,
-    val tknr: String,
-    val fnr: String,
-    val saksblokk: String,
-    val saksnr: String,
-)
-
-data class VedtakResultatResponse(
-    val req: VedtakResultatRequest,
-    val vedtaksResult: String?,
-    val vedtaksDate: LocalDate?,
-    val soknadsType: String?,
-    val error: String?,
-    val queryTimeElapsedMs: Long,
-)
-
-data class HarVedtakForRequest(
-    val fnr: String,
-    val saksblokk: String,
-    val saksnr: String,
-    val vedtaksDato: LocalDate,
-)
-
-data class HarVedtakForResponse(
-    var resultat: Boolean,
-)
-
-data class HarVedtakFraFørRequest(
-    val fnr: String,
-)
-
-data class HarVedtakFraFørResponse(
-    val harVedtakFraFør: Boolean,
-)
-
-data class HentSakerForBrukerRequest(
-    val fnr: String,
-)
-
-data class SakerForBrukerResponse(
-    val mottattDato: LocalDate?,
-    val sakGjelder: List<String>,
-    val saksblokk: String?,
-    val saksnummer: String?,
-    val saksbehandler: String?,
-    val opplysning: String?,
-    val vedtaksResultat: String?,
-    val vedtaksDato: LocalDate?,
-    val error: String? = null,
-)
-
-private val dateFormatter = DateTimeFormatterBuilder()
-    .parseCaseInsensitive()
-    .appendValue(ChronoField.DAY_OF_MONTH, 2)
-    .appendValue(ChronoField.MONTH_OF_YEAR, 2)
-    .appendValue(ChronoField.YEAR, 4)
-    .optionalStart()
-    .parseLenient()
-    .appendOffset("+HHMMss", "Z")
-    .parseStrict()
-    .toFormatter()
-
-fun queryForDecisionResult(connection: Connection, reqs: Array<VedtakResultatRequest>): Array<VedtakResultatResponse> {
-    val results = mutableListOf<VedtakResultatResponse>()
-    getPreparedStatementDecisionResult(connection).use { pstmt ->
-        for (req in reqs) {
-            // Check if request looks right
-            if (req.fnr.trim().length != 11) {
-                val error = "error: request with id=${req.id} has a fnr of length: ${req.fnr.length} != 11"
-                logg.error(error)
-                results.add(
-                    VedtakResultatResponse(
-                        req,
-                        null,
-                        null,
-                        null,
-                        error,
-                        0,
-                    ),
-                )
-                continue // Skip further handling of this request
-            }
-            if (req.tknr.trim().length != 4) {
-                val error = "error: request with id=${req.id} has a tknr of length: ${req.tknr.trim().length} != 4"
-                logg.error(error)
-                results.add(
-                    VedtakResultatResponse(
-                        req,
-                        null,
-                        null,
-                        null,
-                        error,
-                        0,
-                    ),
-                )
-
-                continue // Skip further handling of this request
-            }
-            if (req.saksblokk.trim().length != 1) {
-                val error = "error: request with id=${req.id} has an saksblokk of length: ${req.saksblokk.length} != 1"
-                logg.error(error)
-                results.add(
-                    VedtakResultatResponse(
-                        req,
-                        null,
-                        null,
-                        null,
-                        error,
-                        0,
-                    ),
-                )
-                continue // Skip further handling of this request
-            }
-            if (req.saksnr.trim().length != 2) {
-                val error = "error: request with id=${req.id} has an saksnr of length: ${req.saksnr.length} != 2"
-                logg.error(error)
-                results.add(
-                    VedtakResultatResponse(
-                        req,
-                        null,
-                        null,
-                        null,
-                        error,
-                        0,
-                    ),
-                )
-                continue // Skip further handling of this request
-            }
-
-            val fnr =
-                "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
-
-            // Look up the request in the Infotrygd replication database
-            var foundResult = false
-            var vedtaksResult: String? = null
-            var vedtaksDate: String? = null
-            var soknadsType: String? = null
-            var error: String? = null
-            val elapsed: Duration = measureTime {
-                pstmt.clearParameters()
-                pstmt.setString(1, req.tknr) // TK_NR
-                pstmt.setString(2, fnr) // F_NR
-                pstmt.setString(3, req.saksblokk) // S05_SAKSBLOKK
-                pstmt.setString(4, req.saksnr) // S10_SAKSNR
-                pstmt.executeQuery().use { rs ->
-                    while (rs.next()) {
-                        if (foundResult) {
-                            error =
-                                "we found multiple results for query, this is not supported" // Multiple results not supported
-                            break
-                        } else {
-                            foundResult = true
-                            vedtaksResult = rs.getString("S10_RESULTAT").trim()
-                            vedtaksDate = rs.getString("S10_VEDTAKSDATO").trim()
-                            soknadsType = listOf(
-                                rs.getString("S10_KAPITTELNR"),
-                                rs.getString("S10_VALG"),
-                                rs.getString("S10_UNDERVALG"),
-                                rs.getString("S10_TYPE"),
-                            ).joinToString("") {
-                                var column = it.trim()
-                                if (column.length < 2) {
-                                    column = "$column "
-                                }
-                                column
-                            }.trimEnd()
-                            if (vedtaksDate!!.length == 7) {
-                                vedtaksDate =
-                                    "0$vedtaksDate" // leading-zeros are lost in the database due to use of NUMBER(8) as storage column type
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!foundResult) {
-                val hashedIdent = req.fnr.let { input ->
-                    val md: MessageDigest = MessageDigest.getInstance("SHA-512")
-                    val messageDigest = md.digest(input.toByteArray())
-                    // Convert byte array into signum representation
-                    val no = BigInteger(1, messageDigest)
-                    // Convert message digest into hex value
-                    var hashtext: String = no.toString(16)
-                    // Add preceding 0s to make it 128 chars long
-                    while (hashtext.length < 128) {
-                        hashtext = "0$hashtext"
-                    }
-                    hashtext
-                }
-
-                error =
-                    "no such vedtak in the database (tknr=${req.tknr}, saksblokk=${req.saksblokk}, saksnr=${req.saksnr}, hashedIdent=$hashedIdent)"
-
-                getPreparedStatementDoesPersonKeyExist(connection).use { pstmt2 ->
-                    pstmt2.clearParameters()
-                    pstmt2.setString(1, req.tknr) // TK_NR
-                    pstmt2.setString(2, fnr) // F_NR
-                    pstmt2.executeQuery().use { rs ->
-                        if (rs.next()) {
-                            val numberOfRows = rs.getInt("antall")
-                            if (numberOfRows > 0) {
-                                error += "; however personKey has rows in the table: #" + numberOfRows
-                                    .toString()
-                            }
-                        }
-                    }
-                }
-            }
-
-            try {
-                var parsedVedtaksDate: LocalDate? = null
-                if (vedtaksDate != null && vedtaksDate != "0") {
-                    parsedVedtaksDate =
-                        LocalDate.parse(vedtaksDate!!, dateFormatter)
-                }
-                if (vedtaksResult != null && vedtaksResult == "  ") vedtaksResult = ""
-
-                results.add(
-                    VedtakResultatResponse(
-                        req,
-                        vedtaksResult,
-                        parsedVedtaksDate,
-                        soknadsType,
-                        error,
-                        elapsed.inWholeMilliseconds,
-                    ),
-                )
-            } catch (e: Exception) {
-                val err = "error: could not parse vedtaksDate=$vedtaksDate: $e"
-                error = if (error != null) "error: $error; $err" else err
-
-                logg.error(e) { error }
-
-                results.add(
-                    VedtakResultatResponse(
-                        req,
-                        vedtaksResult,
-                        null,
-                        soknadsType,
-                        error,
-                        elapsed.inWholeMilliseconds,
-                    ),
-                )
-            }
-        }
-    }
-    return results.toTypedArray()
-}
-
-fun queryForDecision(connection: Connection, req: HarVedtakForRequest): HarVedtakForResponse {
-    var result = HarVedtakForResponse(false)
-    getPreparedStatementHasDecisionFor(connection).use { pstmt ->
-        // Check if request looks right
-        if (req.fnr.length != 11) logg.error("error: request has a fnr of length: ${req.fnr.length} != 11")
-        if (req.saksblokk.length != 1) logg.error("error: request has an saksblokk of length: ${req.saksblokk.length} != 1")
-        if (req.saksnr.length != 2) logg.error("error: request has an saksnr of length: ${req.saksnr.length} != 2")
-
-        val vedtaksDato = req.vedtaksDato.format(dateFormatter)
-        val fnr =
-            "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
-
-        // Look up the request in the Infotrygd replication database
-        pstmt.clearParameters()
-        pstmt.setString(1, vedtaksDato) // S10_VEDTAKSDATO
-        pstmt.setString(2, fnr) // F_NR
-        pstmt.setString(3, req.saksblokk) // S05_SAKSBLOKK
-        pstmt.setString(4, req.saksnr) // S10_SAKSNR
-        pstmt.executeQuery().use { rs ->
-            if (rs.next()) {
-                result = HarVedtakForResponse(true)
-            }
-        }
-    }
-    return result
-}
-
-fun queryForHarVedtakFraFør(connection: Connection, req: HarVedtakFraFørRequest): HarVedtakFraFørResponse {
-    var result = HarVedtakFraFørResponse(false)
-    getPreparedStatementHarVedtakFraFør(connection).use { pstmt ->
-        // Check if request looks right
-        if (req.fnr.length != 11) logg.error("error: request has a fnr of length: ${req.fnr.length} != 11")
-
-        val fnr =
-            "${req.fnr.substring(4, 6)}${req.fnr.substring(2, 4)}${req.fnr.substring(0, 2)}${req.fnr.substring(6)}"
-
-        // Look up the request in the Infotrygd replication database
-        pstmt.clearParameters()
-        pstmt.setString(1, fnr) // F_NR
-        pstmt.executeQuery().use { rs ->
-            if (rs.next()) {
-                result = HarVedtakFraFørResponse(true)
-            }
-        }
-    }
-    return result
-}
-
-fun queryForHentSakerForBruker(connection: Connection, req: HentSakerForBrukerRequest): List<SakerForBrukerResponse> {
-    val saker: MutableList<SakerForBrukerResponse> = mutableListOf()
-    getPreparedStatementHentSakerForBruker(connection).use { pstmt ->
-        val fnr = Fødselsnummer(req.fnr)
-
-        pstmt.clearParameters()
-        pstmt.setString(1, fnr.tilInfotrygdFormat())
-        pstmt.executeQuery().use { rs ->
-            if (rs.next()) {
-                try {
-                    val vedtaksResult = rs.getString("S10_RESULTAT")?.trim()
-                    val vedtaksDate = rs.getString("S10_VEDTAKSDATO")?.trim()
-                    val mottattDato = rs.getString("S10_MOTTATTDATO")
-                    val sakGjelder = listOf<String>(
-                        rs.getString("S10_KAPITTELNR"),
-                        rs.getString("S10_VALG"),
-                        rs.getString("S10_UNDERVALG"),
-                    )
-                    val saksblokk = rs.getString("SA_SAK_10.S05_SAKSBLOKK")
-                    val saksNummer = rs.getString("S10_SAKSNR")
-                    val brukerID = rs.getString("S05_BRUKERID")
-                    val opplysning = rs.getString("S20_OPPLYSNING")
-
-                    val sak = SakerForBrukerResponse(
-                        mottattDato = mottattDato?.let { LocalDate.parse(it, dateFormatter) },
-                        sakGjelder = sakGjelder,
-                        saksblokk = saksblokk,
-                        saksnummer = saksNummer,
-                        saksbehandler = brukerID,
-                        opplysning = opplysning,
-                        vedtaksResultat = vedtaksResult,
-                        vedtaksDato = vedtaksDate?.let { LocalDate.parse(it, dateFormatter) },
-                    )
-
-                    saker.add(sak)
-                } catch (e: Exception) {
-                    logg.error(e) { "Feil med parsing av sak for bruker" }
-                }
-            }
-        }
-    }
-    return saker
 }

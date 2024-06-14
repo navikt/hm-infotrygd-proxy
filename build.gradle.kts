@@ -23,11 +23,12 @@ dependencies {
     implementation(libs.ktor.server.netty)
 
     // Metrics
-    implementation(libs.micrometer.registry.prometheus.deprecated)
+    implementation(libs.micrometer.registry.prometheus)
 
-    // Oracle
-    implementation(libs.ojdbc11)
+    // Database
+    implementation(libs.kotliquery)
     implementation(libs.ucp11)
+    runtimeOnly(libs.ojdbc11)
 
     // Jackson
     implementation(libs.jackson.databind)
