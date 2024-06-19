@@ -1,8 +1,9 @@
-package no.nav.hjelpemidler.infotrygd.proxy.database
+package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotliquery.sessionOf
-import no.nav.hjelpemidler.infotrygd.proxy.InfotrygdDao
+import no.nav.hjelpemidler.database.JdbcOperations
+import no.nav.hjelpemidler.database.transactionAsync
+import no.nav.hjelpemidler.database.withDatabaseContext
 import java.io.Closeable
 import javax.sql.DataSource
 
@@ -15,12 +16,8 @@ class Database(private val dataSource: DataSource) : Closeable {
         }
     }
 
-    suspend fun <T> transaction(block: DaoProvider.() -> T): T = withDatabaseContext {
-        sessionOf(dataSource, strict = true).use { session ->
-            session.transaction { tx ->
-                DaoProvider(SessionJdbcOperations(tx)).block()
-            }
-        }
+    suspend fun <T> transaction(block: DaoProvider.() -> T): T = transactionAsync(dataSource, strict = true) {
+        DaoProvider(it).block()
     }
 
     override fun close() {

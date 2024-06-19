@@ -20,9 +20,10 @@ Content-Type: application/json
 }
 
 ###
-POST http://localhost:8080/vedtak-resultat
+POST https://hm-infotrygd-proxy.dev-fss-pub.nais.io/vedtak-resultat
 Accept: application/json
 Content-Type: application/json
+Authorization: Bearer fixme
 
 [
   {

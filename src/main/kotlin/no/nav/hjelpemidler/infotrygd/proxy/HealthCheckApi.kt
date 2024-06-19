@@ -6,7 +6,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
-import no.nav.hjelpemidler.infotrygd.proxy.database.Database
 
 fun Route.healthCheckApi(database: Database) {
     get("/isalive") {

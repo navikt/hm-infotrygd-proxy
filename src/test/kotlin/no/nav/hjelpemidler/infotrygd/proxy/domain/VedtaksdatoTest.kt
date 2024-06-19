@@ -1,7 +1,7 @@
 package no.nav.hjelpemidler.infotrygd.proxy.domain
 
 import io.kotest.matchers.shouldBe
-import no.nav.hjelpemidler.infotrygd.proxy.database.infotrygdDateTimeFormatter
+import no.nav.hjelpemidler.infotrygd.proxy.infotrygdDateTimeFormatter
 import java.time.LocalDate
 import java.time.Month
 import kotlin.test.Test

@@ -57,6 +57,27 @@ CREATE TABLE SA_SAK_10
     DB_SPLITT              CHAR(2 CHAR)      DEFAULT '99'              NOT NULL
 );
 
+INSERT INTO SA_SAK_10 (S01_PERSONKEY, S05_SAKSBLOKK, S10_SAKSNR, S10_REG_DATO, S10_MOTTATTDATO,
+                       S10_KAPITTELNR, S10_VALG, S10_UNDERVALG, S10_DUBLETT_FEIL, S10_TYPE,
+                       S10_INNSTILLING, S10_RESULTAT, S10_NIVAA, S10_INNSTILLDATO, S10_VEDTAKSDATO,
+                       S10_IVERKSATTDATO, S10_GRUNNBL_DATO, S10_AARSAKSKODE, S10_TELLEPUNKT,
+                       S10_TELLETYPE, S10_TELLEDATO, S10_EVAL_KODE, S10_EVAL_TIR, S10_FREMLEGG,
+                       S10_INNSTILLING2, S10_INNSTILLDATO2, S10_ANNEN_INSTANS, S10_BEHEN_TYPE,
+                       S10_BEHEN_ENHET, S10_REG_AV_TYPE, S10_REG_AV_ENHET, S10_DIFF_FRAMLEGG,
+                       S10_INNSTILLT_AV_TYPE, S10_INNSTILLT_AV_ENHET, S10_VEDTATT_AV_TYPE,
+                       S10_VEDTATT_AV_ENHET, S10_PRIO_TAB, S10_AOE, S10_ES_SYSTEM, S10_ES_GSAK_OPPDRAGSID,
+                       S10_KNYTTET_TIL_SAK, S10_VEDTAKSTYPE, S10_REELL_ENHET, S10_MOD_ENDRET, TK_NR, F_NR,
+                       OPPRETTET, ENDRET_I_KILDE, KILDE_IS, REGION, ID_SAK, OPPDATERT, DB_SPLITT)
+VALUES (183316081172972, 'A', '01', 31122020, 29122020, 'HJ', 'BD', '  ', ' ', 'S ', '  ', 'I ', 'TK ', 0, 15012021, 0,
+        15012021, '00', '032', 'D', 20210115, 'EVJD', 'R', '000', '  ', 0, 'O', 'HMS', '4710', '   ', '0000', '000',
+        '   ', '0000', 'HMS', '4710', '      ', '   ', 'G', 331120940, '00', ' ', '4710', ' ', '1833', '16081172972',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG09', '9', 89521641, CURRENT_TIMESTAMP,
+        'HJ'),
+       (391115010799545, 'A', '02', 31122020, 29122020, 'HJ', 'BD', '  ', ' ', 'S ', '  ', 'I ', 'TK ', 0, 15012021, 0,
+        15012021, '00', '032', 'D', 20210115, 'EVJD', 'R', '000', '  ', 0, 'O', 'HMS', '4710', '   ', '0000', '000',
+        '   ', '0000', 'HMS', '4710', '      ', '   ', 'G', 331120761, '00', ' ', '4710', ' ', '3911', '15010799545',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG04', '4', 43593288, CURRENT_TIMESTAMP, 'HJ');
+
 CREATE TABLE SA_SAKSBLOKK_05
 (
     S01_PERSONKEY    NUMBER(15)                                  NOT NULL,
@@ -77,7 +98,17 @@ CREATE TABLE SA_SAKSBLOKK_05
     DB_SPLITT        CHAR(2 CHAR)      DEFAULT '99'              NOT NULL
 );
 
-CREATE TABLE INFOTRYGD_HJQ.SA_HENDELSE_20
+INSERT INTO SA_SAKSBLOKK_05 (S01_PERSONKEY, S05_SAKSBLOKK, S05_GRUPPE, S05_BRUKERID, S05_MENGDETELLET,
+                             TK_NR, F_NR, OPPRETTET, ENDRET_I_KILDE, KILDE_IS, REGION, ID_SBLK, OPPDATERT,
+                             DB_SPLITT)
+VALUES (391115010799545, 'A', '01', 'BRC4705', 'J', '3911', '15010799545', CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP, 'RG04', '4', 19019945,
+        CURRENT_TIMESTAMP, '99'),
+       (183316081172972, 'A', '01', 'BRC4705', 'J', '1833', '16081172972', CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP, 'RG09', '9', 38365366,
+        CURRENT_TIMESTAMP, '99');
+
+CREATE TABLE SA_HENDELSE_20
 (
     S01_PERSONKEY       NUMBER(15)                                   NOT NULL,
     S05_SAKSBLOKK       CHAR(1 CHAR)                                 NOT NULL,
@@ -130,3 +161,55 @@ CREATE TABLE INFOTRYGD_HJQ.SA_HENDELSE_20
     OPPDATERT           TIMESTAMP(6)       DEFAULT CURRENT_TIMESTAMP NOT NULL,
     DB_SPLITT_CONCAT    VARCHAR2(100 CHAR) DEFAULT '99'              NOT NULL
 );
+
+INSERT INTO SA_HENDELSE_20 (S01_PERSONKEY, S05_SAKSBLOKK, S20_AKSJONSDATO_SEQ, S20_S_B_KODE,
+                            S20_BREVNUMMER, S20_MOTTAKERKODE, S20_MOTTAKERNR, S20_FNR_ANR_INSTNR,
+                            S20_OPPLYSNING, S20_ANT_PURREUKER_1, S20_ANT_PURREUKER_2, S20_ANT_PURREUKER_3,
+                            S20_S_PURRENR, S20_1_PURREDATO, S20_2_PURREDATO, S20_3_PURREDATO,
+                            S20_RETURDATO, S20_NESTE_PURREDATO, S20_SAKSNR, S20_KLADD, S20_LOPENR_FM01,
+                            S20_LOPENR_PRINT, S20_SENTRALPRINT, S20_BREVTYPE, S20_TEKSTKODE_1,
+                            S20_TEKSTKODE_2, S20_TEKSTKODE_3, S20_TEKSTKODE_4, S20_TEKSTKODE_5,
+                            S20_PURRETEKST_1, S20_PURRETEKST_2, S20_PURRETEKST_3, S20_DATO_DANNET,
+                            S20_LAGER, S20_REG_AV, S20_OPPR_TKNR, S20_OPPR_BRUKERID, S20_IKKE_AVBRYT,
+                            S20_MAALFORM, TK_NR, F_NR, OPPRETTET, ENDRET_I_KILDE, KILDE_IS, REGION,
+                            ID_HEND, OPPDATERT, DB_SPLITT_CONCAT)
+VALUES (183316081172972, 'A', 79789884, 'A', '00', 'TRY', '00000000000', 0, 'Behandlingsbrille sats 2              ',
+        '00', '00', '00', '0', 0, 0, 0, 0, 0, '01', 'N', '0', '000', 'S', ' ', 'HT71', '    ', '    ', '    ', '    ',
+        '    ', '    ', '    ', 15012021, 'P', 'HMS', '4710', '       ', ' ', 'B', '1833', '16081172972',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG09', '9',
+        101486221, CURRENT_TIMESTAMP, 'HJ'),
+       (183316081172972, 'A', 79789076, 'A', '00', 'TRY', '00000000000', 0, 'Behandlingsbrille sats 2              ',
+        '00', '00', '00', '0', 0, 0, 0, 0, 0, '02', 'N', '0', '000', 'S', ' ', 'HT71', '    ', '    ', '    ', '    ',
+        '    ', '    ', '    ', 23092021, 'P', 'HMS', '4710', '       ', ' ', 'B', '1833', '16081172972',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG09', '9',
+        101486216, CURRENT_TIMESTAMP, 'HJ'),
+       (183316081172972, 'A', 79779173, 'A', '00', 'TRY', '00000000000', 0, 'Behandlingsbrille sats 2              ',
+        '00', '00', '00', '0', 0, 0, 0, 0, 0, '03', 'N', '0', '000', 'S', ' ', 'HT71', '    ', '    ', '    ', '    ',
+        '    ', '    ', '    ', 26082022, 'P', 'HMS', '4710', '       ', ' ', 'B', '1833', '16081172972',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG09', '9',
+        101486215, CURRENT_TIMESTAMP, 'HJ'),
+       (183316081172972, 'A', 79769476, 'A', '00', 'TRY', '00000000000', 0, 'Reparasjon av behandlingsbrille       ',
+        '00', '00', '00', '0', 0, 0, 0, 0, 0, '04', 'N', '0', '000', 'S', ' ', 'HT74', '    ', '    ', '    ', '    ',
+        '    ', '    ', '    ', 23052023, 'P', 'HMS', '4710', '       ', ' ', 'B', '1833', '16081172972',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG09', '9',
+        101486214, CURRENT_TIMESTAMP, 'HJ'),
+       (183316081172972, 'A', 79768779, 'A', '00', 'TRY', '00000000000', 0, 'Behandlingsbrille sats 2              ',
+        '00', '00', '00', '0', 0, 0, 0, 0, 0, '05', 'N', '0', '000', 'S', ' ', 'HT71', '    ', '    ', '    ', '    ',
+        '    ', '    ', '    ', 20122023, 'P', 'HMS', '4710', '       ', ' ', 'B', '1833', '16081172972',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG09', '9',
+        101486213, CURRENT_TIMESTAMP, 'HJ'),
+       (391115010799545, 'A', 79779369, 'A', '00', 'TRY', '00000000000', 0, 'Behandlingsbrille sats 2              ',
+        '00', '00', '00', '0', 0, 0, 0, 0, 0, '03', 'N', '0', '000', 'S', ' ', 'HT71', '    ', '    ', '    ', '    ',
+        '    ', '    ', '    ', 30062022, 'P', 'HMS', '4710', '       ', ' ', 'B', '3911', '15010799545',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG04', '4',
+        51120730, CURRENT_TIMESTAMP, 'HJ'),
+       (391115010799545, 'A', 79808969, 'A', '00', 'TRY', '00000000000', 0, 'Innvilgelse (helt/delvis) - hel       ',
+        '00', '00', '00', '0', 0, 0, 0, 0, 0, '01', 'N', '0', '000', 'S', ' ', 'HE22', '    ', '    ', '    ', '    ',
+        '    ', '    ', '    ', 30102019, 'P', 'HMS', '4710', 'MFA4710', ' ', 'B', '3911', '15010799545',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG04', '4',
+        51120744, CURRENT_TIMESTAMP, 'HJ'),
+       (391115010799545, 'A', 79789884, 'A', '00', 'TRY', '00000000000', 0, 'Behandlingsbrille sats 1              ',
+        '00', '00', '00', '0', 0, 0, 0, 0, 0, '02', 'N', '0', '000', 'S', ' ', 'HT70', '    ', '    ', '    ', '    ',
+        '    ', '    ', '    ', 15012021, 'P', 'HMS', '4710', '       ', ' ', 'B', '3911', '15010799545',
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG04', '4',
+        51120740, CURRENT_TIMESTAMP, 'HJ');

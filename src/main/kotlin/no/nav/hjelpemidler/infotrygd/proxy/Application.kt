@@ -20,8 +20,8 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import no.nav.hjelpemidler.configuration.Environment
-import no.nav.hjelpemidler.infotrygd.proxy.database.Database
-import no.nav.hjelpemidler.infotrygd.proxy.database.createDataSource
+import no.nav.hjelpemidler.database.Oracle
+import no.nav.hjelpemidler.database.createDataSource
 import org.slf4j.event.Level
 
 private val log = KotlinLogging.logger {}
@@ -52,14 +52,12 @@ fun Application.module() {
 
     install(MicrometerMetrics) { registry = Prometheus.registry }
 
-    val dataSource = createDataSource {
+    val database = createDataSource(Oracle) {
         jdbcUrl = Configuration.HM_INFOTRYGD_PROXY_DB_JDBC_URL
         username = Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME
         password = Configuration.HM_INFOTRYGD_PROXY_DB_PASSWORD
         databaseName = Configuration.HM_INFOTRYGD_PROXY_DB_NAME
-    }
-
-    val database = Database(dataSource)
+    }.let(::Database)
     environment.monitor.subscribe(ApplicationStopping) {
         database.close()
     }

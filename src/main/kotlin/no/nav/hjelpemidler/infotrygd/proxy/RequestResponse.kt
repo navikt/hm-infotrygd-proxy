@@ -17,13 +17,13 @@ data class VedtaksresultatRequest(
     val saksblokk: Saksblokk,
     val saksnr: Saksnummer,
 ) {
-    fun toMap(): Map<String, Any> = mapOf(
+    fun toMap(): Map<String, Any?> = mapOf(
         "id" to søknadId,
         "fnr" to fnr,
         "tknr" to tknr,
         "saksblokk" to saksblokk,
         "saksnr" to saksnr,
-    )
+    ).tilInfotrygdformat()
 }
 
 data class VedtaksresultatResponse(

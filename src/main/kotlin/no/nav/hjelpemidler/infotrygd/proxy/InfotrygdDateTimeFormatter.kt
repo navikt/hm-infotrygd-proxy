@@ -1,5 +1,6 @@
-package no.nav.hjelpemidler.infotrygd.proxy.database
+package no.nav.hjelpemidler.infotrygd.proxy
 
+import kotliquery.Row
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
@@ -17,3 +18,9 @@ val infotrygdDateTimeFormatter: DateTimeFormatter = DateTimeFormatterBuilder()
     .appendOffset("+HHMMss", "Z")
     .parseStrict()
     .toFormatter()
+
+fun Row.infotrygdDateOrNull(columnName: String): LocalDate? {
+    val value = stringOrNull(columnName) ?: return null
+    if (value.isBlank() || value == "0") return null
+    return LocalDate.parse(value.padStart(8, '0'), infotrygdDateTimeFormatter)
+}

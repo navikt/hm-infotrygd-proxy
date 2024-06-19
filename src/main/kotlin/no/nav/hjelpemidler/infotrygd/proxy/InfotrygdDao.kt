@@ -2,16 +2,15 @@ package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotliquery.Row
-import no.nav.hjelpemidler.infotrygd.proxy.database.JdbcOperations
-import no.nav.hjelpemidler.infotrygd.proxy.database.fødelsnummer
-import no.nav.hjelpemidler.infotrygd.proxy.database.localDateOrNull2
-import no.nav.hjelpemidler.infotrygd.proxy.database.saksblokk
-import no.nav.hjelpemidler.infotrygd.proxy.database.saksnummer
-import no.nav.hjelpemidler.infotrygd.proxy.database.trygdekontornummer
+import no.nav.hjelpemidler.database.JdbcOperations
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Fødselsnummer
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Saksblokk
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Saksnummer
+import no.nav.hjelpemidler.infotrygd.proxy.domain.fødelsnummer
+import no.nav.hjelpemidler.infotrygd.proxy.domain.saksblokk
+import no.nav.hjelpemidler.infotrygd.proxy.domain.saksnummer
 import no.nav.hjelpemidler.infotrygd.proxy.domain.tilSøknadstype
+import no.nav.hjelpemidler.infotrygd.proxy.domain.trygdekontornummer
 import java.time.LocalDate
 
 private val log = KotlinLogging.logger {}
@@ -78,7 +77,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 VedtaksresultatResponse(
                     request = request,
                     vedtaksresultat = row.string("S10_RESULTAT").trim(),
-                    vedtaksdato = row.localDateOrNull2("S10_VEDTAKSDATO"),
+                    vedtaksdato = row.infotrygdDateOrNull("S10_VEDTAKSDATO"),
                     søknadstype = row.tilSøknadstype().toString(),
                 )
             }
@@ -141,7 +140,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 "vedtaksdato" to vedtaksdato,
                 "saksblokk" to saksblokk,
                 "saksnr" to saksnr,
-            ),
+            ).tilInfotrygdformat(),
         ) { true } == true
     }
 
@@ -157,7 +156,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                   AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
                 FETCH FIRST 1 ROWS ONLY
             """.trimIndent(),
-            mapOf("fnr" to fnr),
+            mapOf("fnr" to fnr).tilInfotrygdformat(),
         ) { true } == true
     }
 
@@ -184,15 +183,15 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                   AND sak.S01_PERSONKEY = hendelse.S01_PERSONKEY
                   AND (sak.DB_SPLITT = 'HJ' OR sak.DB_SPLITT = '99')
             """.trimIndent(),
-            mapOf("fnr" to fnr),
+            mapOf("fnr" to fnr).tilInfotrygdformat(),
         ) { row ->
             HentSakerForBrukerResponse(
-                mottattDato = row.localDateOrNull2("S10_MOTTATTDATO"),
+                mottattDato = row.infotrygdDateOrNull("S10_MOTTATTDATO"),
                 søknadstype = row.tilSøknadstype().toString(),
                 saksblokk = row.saksblokk("S05_SAKSBLOKK"),
                 saksnummer = row.saksnummer("S10_SAKSNR"),
                 vedtaksresultat = row.string("S10_RESULTAT").trim(),
-                vedtaksdato = row.localDateOrNull2("S10_VEDTAKSDATO"),
+                vedtaksdato = row.infotrygdDateOrNull("S10_VEDTAKSDATO"),
                 saksbehandler = row.stringOrNull("S05_BRUKERID")?.trim(),
                 opplysning = row.stringOrNull("S20_OPPLYSNING")?.trim(),
             )

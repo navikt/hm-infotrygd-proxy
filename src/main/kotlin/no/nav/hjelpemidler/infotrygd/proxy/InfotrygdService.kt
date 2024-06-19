@@ -1,7 +1,6 @@
 package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import no.nav.hjelpemidler.infotrygd.proxy.database.Database
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Fødselsnummer
 
 private val log = KotlinLogging.logger {}
