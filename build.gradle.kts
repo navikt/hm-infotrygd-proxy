@@ -55,4 +55,8 @@ spotless {
 
 application { mainClass.set("no.nav.hjelpemidler.infotrygd.proxy.ApplicationKt") }
 kotlin { jvmToolchain(21) }
-tasks.test { useJUnitPlatform() }
+
+tasks.test {
+    environment("NAIS_CLUSTER_NAME", "test")
+    useJUnitPlatform()
+}

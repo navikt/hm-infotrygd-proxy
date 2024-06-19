@@ -1,7 +1,8 @@
 package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotliquery.Row
+import no.nav.hjelpemidler.configuration.Environment
+import no.nav.hjelpemidler.configuration.TestEnvironment
 import no.nav.hjelpemidler.database.JdbcOperations
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Fødselsnummer
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Saksblokk
@@ -22,10 +23,11 @@ private val log = KotlinLogging.logger {}
 class InfotrygdDao(private val tx: JdbcOperations) {
     fun hentVedtaksresultat(requests: List<VedtaksresultatRequest>): List<VedtaksresultatResponse> {
         if (requests.isEmpty()) return emptyList()
-        // Oppretter og lagrer innslag i temporærtabell for å slippe dynamisk IN-clause eller flere kall mot databasen.
-        // Tabellen eksisterer i minne kun for denne transaksjonen.
-        tx.execute(
-            """
+        if (Environment.current != TestEnvironment) {
+            // Oppretter og lagrer innslag i temporærtabell for å slippe dynamisk IN-clause eller flere kall mot databasen.
+            // Tabellen eksisterer i minne kun for denne transaksjonen.
+            tx.execute(
+                """
                 CREATE PRIVATE TEMPORARY TABLE ORA${'$'}PTT_HENT_VEDTAKSRESULTAT
                 (
                     ID            VARCHAR2(36),
@@ -34,8 +36,9 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                     S05_SAKSBLOKK CHAR(1),
                     S10_SAKSNR    CHAR(2)
                 ) ON COMMIT DROP DEFINITION
-            """.trimIndent(),
-        )
+                """.trimIndent(),
+            )
+        }
         tx.batch(
             """
                 INSERT INTO ORA${'$'}PTT_HENT_VEDTAKSRESULTAT (ID, F_NR, TK_NR, S05_SAKSBLOKK, S10_SAKSNR)
@@ -66,7 +69,13 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 WHERE (sak.ID_SAK IS NULL OR sak.DB_SPLITT = 'HJ' OR sak.DB_SPLITT = '99')
             """.trimIndent(),
         ) { row ->
-            val request = row.tilVedtaksresultatRequest()
+            val request = VedtaksresultatRequest(
+                søknadId = row.string("ID"),
+                fnr = row.fødelsnummer("F_NR"),
+                tknr = row.trygdekontornummer("TK_NR"),
+                saksblokk = row.saksblokk("S05_SAKSBLOKK"),
+                saksnr = row.saksnummer("S10_SAKSNR"),
+            )
             val sakId = row.longOrNull("ID_SAK")
             if (sakId == null) {
                 VedtaksresultatResponse(
@@ -86,31 +95,23 @@ class InfotrygdDao(private val tx: JdbcOperations) {
             .list(
                 """
                     SELECT hent_vedtaksresultat.ID,
-                           hent_vedtaksresultat.F_NR,
-                           hent_vedtaksresultat.TK_NR,
-                           hent_vedtaksresultat.S05_SAKSBLOKK,
-                           hent_vedtaksresultat.S10_SAKSNR,
                            COUNT(1) AS ANTALL
                     FROM ORA${'$'}PTT_HENT_VEDTAKSRESULTAT hent_vedtaksresultat
                              INNER JOIN SA_SAK_10 sak ON sak.F_NR = hent_vedtaksresultat.F_NR
                         AND sak.TK_NR = hent_vedtaksresultat.TK_NR
                     WHERE (sak.DB_SPLITT = 'HJ' OR sak.DB_SPLITT = '99')
-                    GROUP BY hent_vedtaksresultat.ID,
-                             hent_vedtaksresultat.F_NR,
-                             hent_vedtaksresultat.TK_NR,
-                             hent_vedtaksresultat.S05_SAKSBLOKK,
-                             hent_vedtaksresultat.S10_SAKSNR
+                    GROUP BY hent_vedtaksresultat.ID
                 """.trimIndent(),
-            ) { row -> row.tilVedtaksresultatRequest() to row.long("ANTALL") }
+            ) { row -> row.string("ID") to row.long("ANTALL") }
             .toMap()
 
         return responses.map { response ->
             when (response.feilkode) {
                 VedtaksresultatResponse.Feilkode.VEDTAKSRESULTAT_IKKE_FUNNET -> {
-                    val antall = antallByRequest[response.request] ?: 0
+                    val antall = antallByRequest[response.request.søknadId] ?: 0
                     if (antall > 0) {
                         response.copy(
-                            feilkode = VedtaksresultatResponse.Feilkode.VEDTAKSRESULTAT_IKKE_FUNNET_HAR_RADER,
+                            feilkode = VedtaksresultatResponse.Feilkode.VEDTAKSRESULTAT_IKKE_FUNNET_HAR_ANDRE_SAKER,
                             antall = antall,
                         )
                     } else {
@@ -197,15 +198,4 @@ class InfotrygdDao(private val tx: JdbcOperations) {
             )
         }
     }
-}
-
-private fun Row.tilVedtaksresultatRequest(): VedtaksresultatRequest {
-    val row = this
-    return VedtaksresultatRequest(
-        søknadId = row.string("ID"),
-        fnr = row.fødelsnummer("F_NR"),
-        tknr = row.trygdekontornummer("TK_NR"),
-        saksblokk = row.saksblokk("S05_SAKSBLOKK"),
-        saksnr = row.saksnummer("S10_SAKSNR"),
-    )
 }

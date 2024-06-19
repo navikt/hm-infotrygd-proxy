@@ -213,3 +213,12 @@ VALUES (183316081172972, 'A', 79789884, 'A', '00', 'TRY', '00000000000', 0, 'Beh
         '    ', '    ', '    ', 15012021, 'P', 'HMS', '4710', '       ', ' ', 'B', '3911', '15010799545',
         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'RG04', '4',
         51120740, CURRENT_TIMESTAMP, 'HJ');
+
+CREATE TABLE ORA$PTT_HENT_VEDTAKSRESULTAT
+(
+    ID            VARCHAR2(36),
+    F_NR          VARCHAR2(11),
+    TK_NR         VARCHAR2(4),
+    S05_SAKSBLOKK CHAR(1),
+    S10_SAKSNR    CHAR(2)
+);

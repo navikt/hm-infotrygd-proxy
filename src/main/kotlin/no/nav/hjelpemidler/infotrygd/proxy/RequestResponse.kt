@@ -63,7 +63,7 @@ data class VedtaksresultatResponse(
             Feilkode.VEDTAKSRESULTAT_IKKE_FUNNET ->
                 "Fant ikke vedtaksresultat, tknr: ${request.tknr}, saksblokk: ${request.saksblokk}, saksnr: ${request.saksnr}"
 
-            Feilkode.VEDTAKSRESULTAT_IKKE_FUNNET_HAR_RADER ->
+            Feilkode.VEDTAKSRESULTAT_IKKE_FUNNET_HAR_ANDRE_SAKER ->
                 "Fant ikke vedtaksresultat, men bruker har andre saker, tknr: ${request.tknr}, saksblokk: ${request.saksblokk}, saksnr: ${request.saksnr}, antall: $antall"
 
             else -> null
@@ -71,7 +71,7 @@ data class VedtaksresultatResponse(
 
     enum class Feilkode {
         VEDTAKSRESULTAT_IKKE_FUNNET,
-        VEDTAKSRESULTAT_IKKE_FUNNET_HAR_RADER,
+        VEDTAKSRESULTAT_IKKE_FUNNET_HAR_ANDRE_SAKER,
     }
 }
 
