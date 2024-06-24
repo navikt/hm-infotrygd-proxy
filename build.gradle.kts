@@ -6,45 +6,34 @@ plugins {
 
 dependencies {
     implementation(libs.kotlin.stdlib)
-    implementation(libs.konfig.deprecated)
+    implementation(libs.micrometer.registry.prometheus)
+    implementation(libs.hm.core)
 
     // Logging
     implementation(libs.kotlin.logging)
-    runtimeOnly(libs.logback.classic)
-    runtimeOnly(libs.logstash.logback.encoder)
-
-    // Ktor Server
-    implementation(libs.ktor.serialization.jackson)
-    implementation(libs.ktor.server.auth)
-    implementation(libs.ktor.server.auth.jwt)
-    implementation(libs.ktor.server.call.id)
-    implementation(libs.ktor.server.content.negotiation)
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.metrics.micrometer)
-    implementation(libs.ktor.server.netty)
-
-    // Ktor Client
-    implementation(libs.ktor.client.apache)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.client.core)
-
-    // Metrics
-    implementation(libs.micrometer.registry.prometheus.deprecated)
-
-    // Oracle
-    implementation(libs.ojdbc11)
-    implementation(libs.ucp11)
+    runtimeOnly(libs.bundles.logging.runtime)
 
     // Jackson
-    implementation(libs.jackson.databind)
-    implementation(libs.jackson.module.kotlin)
-    implementation(libs.jackson.datatype.jsr310)
+    implementation(libs.bundles.jackson)
+
+    // Ktor Server
+    implementation(libs.bundles.ktor.server)
+
+    // Database
+    implementation(libs.hm.database)
+    implementation(libs.hm.database) {
+        capabilities {
+            requireCapability("no.nav.hjelpemidler:hm-database-oracle")
+        }
+    }
 
     // Test
-    testImplementation(libs.kotlin.test.junit5)
-    testImplementation(libs.kotest.assertions.core)
-    testImplementation(libs.mockk)
-    testRuntimeOnly(libs.h2)
+    testImplementation(libs.bundles.test)
+    testImplementation(libs.hm.database) {
+        capabilities {
+            requireCapability("no.nav.hjelpemidler:hm-database-h2")
+        }
+    }
 }
 
 spotless {
@@ -64,6 +53,10 @@ spotless {
     }
 }
 
-application { mainClass.set("no.nav.hjelpemidler.ApplicationKt") }
+application { mainClass.set("no.nav.hjelpemidler.infotrygd.proxy.ApplicationKt") }
 kotlin { jvmToolchain(21) }
-tasks.test { useJUnitPlatform() }
+
+tasks.test {
+    environment("NAIS_CLUSTER_NAME", "test")
+    useJUnitPlatform()
+}

@@ -1,81 +1,65 @@
 package no.nav.hjelpemidler.infotrygd.proxy
 
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
-import no.nav.hjelpemidler.getPreparedStatementDecisionResult
-import no.nav.hjelpemidler.getPreparedStatementDoesPersonKeyExist
-import no.nav.hjelpemidler.getPreparedStatementHarVedtakFraFør
-import no.nav.hjelpemidler.getPreparedStatementHasDecisionFor
-import no.nav.hjelpemidler.getPreparedStatementHentSakerForBruker
-import no.nav.hjelpemidler.infotrygd.proxy.database.JdbcOperations
-import java.sql.Connection
-import kotlin.test.BeforeTest
+import kotlinx.coroutines.test.runTest
+import no.nav.hjelpemidler.infotrygd.proxy.database.testTransaction
+import no.nav.hjelpemidler.infotrygd.proxy.domain.Fødselsnummer
+import no.nav.hjelpemidler.infotrygd.proxy.domain.Saksblokk
+import no.nav.hjelpemidler.infotrygd.proxy.domain.Saksnummer
+import no.nav.hjelpemidler.infotrygd.proxy.domain.Trygdekontornummer
+import java.time.LocalDate
+import java.util.UUID
 import kotlin.test.Test
 
 class InfotrygdDaoTest {
-    private val connection: Connection = mockk()
-    private val jdbcOperations: JdbcOperations = mockk()
-    private val dao: InfotrygdDao = InfotrygdDao(jdbcOperations)
+    private val fnr = Fødselsnummer("11081672972")
+    private val saksblokk = Saksblokk("A")
+    private val saksnr = Saksnummer("01")
 
-    private val sqlSlot = slot<String>()
+    @Test
+    fun `Hent vedtaksresultat`() = runTest {
+        val responses = testTransaction {
+            infotrygdDao.hentVedtaksresultat(
+                listOf(
+                    VedtaksresultatRequest(
+                        søknadId = UUID.randomUUID().toString(),
+                        fnr = fnr,
+                        tknr = Trygdekontornummer("1833"),
+                        saksblokk = saksblokk,
+                        saksnr = saksnr,
+                    ),
+                ),
+            )
+        }
 
-    @BeforeTest
-    fun setUp() {
-        every { connection.prepareStatement(capture(sqlSlot)) } returns mockk()
-        every { jdbcOperations.list<Any>(capture(sqlSlot), *anyVararg<Any>(), mapper = any()) } returns emptyList()
+        responses shouldHaveSize 1
     }
 
     @Test
-    fun `Ny og gammel SQL for å hente vedtaksresultat er like`() {
-        dao.hentVedtaksresultat("1", "2", "3", "4")
-        val nySql = sqlSlot.captured.joinLines()
-        sqlSlot.clear()
-        getPreparedStatementDecisionResult(connection)
-        val eksisterendeSql = sqlSlot.captured
-        nySql shouldBe eksisterendeSql
+    fun `Har vedtak for`() = runTest {
+        val harVedtakFor = testTransaction {
+            infotrygdDao.harVedtakFor(fnr, LocalDate.parse("2021-01-15"), saksblokk, saksnr)
+        }
+
+        harVedtakFor shouldBe true
     }
 
     @Test
-    fun `Ny og gammel SQL for å hente antall er like`() {
-        dao.antall("1", "2")
-        val nySql = sqlSlot.captured.joinLines()
-        sqlSlot.clear()
-        getPreparedStatementDoesPersonKeyExist(connection)
-        val eksisterendeSql = sqlSlot.captured
-        nySql shouldBe eksisterendeSql
+    fun `Har vedtak fra før`() = runTest {
+        val harVedtakFraFør = testTransaction {
+            infotrygdDao.harVedtakFraFør(fnr)
+        }
+
+        harVedtakFraFør shouldBe true
     }
 
     @Test
-    fun `Ny og gammel SQL for å hente vedtak for er like`() {
-        dao.harVedtakFor("1", "2", "3", "4")
-        val nySql = sqlSlot.captured.joinLines()
-        sqlSlot.clear()
-        getPreparedStatementHasDecisionFor(connection)
-        val eksisterendeSql = sqlSlot.captured
-        nySql shouldBe eksisterendeSql
-    }
+    fun `Hent saker for bruker`() = runTest {
+        val responses = testTransaction {
+            infotrygdDao.hentSakerForBruker(fnr)
+        }
 
-    @Test
-    fun `Ny og gammel SQL for å hente vedtak fra før er like`() {
-        dao.harVedtakFraFør("1")
-        val nySql = sqlSlot.captured.joinLines()
-        sqlSlot.clear()
-        getPreparedStatementHarVedtakFraFør(connection)
-        val eksisterendeSql = sqlSlot.captured
-        nySql shouldBe eksisterendeSql
-    }
-
-    @Test
-    fun `Ny og gammel SQL for å hente saker er like`() {
-        dao.hentSakerForBruker("1")
-        val nySql = sqlSlot.captured.joinLines()
-        sqlSlot.clear()
-        getPreparedStatementHentSakerForBruker(connection)
-        val eksisterendeSql = sqlSlot.captured
-        nySql shouldBe eksisterendeSql.replace("\\s+".toRegex(), " ")
+        responses shouldHaveSize 5
     }
 }
-
-private fun String.joinLines(): String = lines().joinToString(" ", transform = String::trim)

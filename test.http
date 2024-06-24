@@ -1,0 +1,52 @@
+### Lag token: https://azure-token-generator.intern.dev.nav.no/api/m2m?aud=dev-fss:teamdigihot:hm-infotrygd-proxy
+
+###
+POST https://hm-infotrygd-proxy.dev-fss-pub.nais.io/har-vedtak-fra-for
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer fixme
+
+{
+  "fnr": "07045943989"
+}
+
+###
+POST http://localhost:8080/har-vedtak-fra-for
+Accept: application/json
+Content-Type: application/json
+
+{
+  "fnr": "07045943989"
+}
+
+###
+POST https://hm-infotrygd-proxy.dev-fss-pub.nais.io/vedtak-resultat
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer fixme
+
+[
+  {
+    "id": "13867eab-b958-440d-bdd3-3ec1a3696215",
+    "fnr": "07045943989",
+    "tknr": "3118",
+    "saksblokk": "A",
+    "saksnr": "11"
+  },
+  {
+    "id": "a0e22144-f011-46da-b41f-f8acf2063e02",
+    "fnr": "07045943989",
+    "tknr": "3118",
+    "saksblokk": "B",
+    "saksnr": "12"
+  }
+]
+
+###
+POST http://localhost:8080/hent-saker-for-bruker
+Accept: application/json
+Content-Type: application/json
+
+{
+  "fnr": "07045943989"
+}
