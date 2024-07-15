@@ -15,7 +15,7 @@ class InfotrygdService(private val database: Database) {
     }
 
     suspend fun harVedtakFor(request: HarVedtakForRequest): HarVedtakForResponse {
-        log.info { "Sjekker om bruker har ?" } // fixme -> hva brukes denne til egentlig?
+        log.info { "Sjekker om bruker har vedtak, vedtaksdato: ${request.vedtaksdato}, saksblokk: ${request.saksblokk}, saksnr: ${request.saksnr}" }
         return database.transaction {
             val resultat = infotrygdDao.harVedtakFor(
                 request.fnr,
