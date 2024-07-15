@@ -28,7 +28,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
             // Tabellen eksisterer i minne kun for denne transaksjonen.
             tx.execute(
                 """
-                CREATE PRIVATE TEMPORARY TABLE ORA${'$'}PTT_HENT_VEDTAKSRESULTAT
+                CREATE PRIVATE TEMPORARY TABLE ${Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME}.ORA${'$'}PTT_HENT_VEDTAKSRESULTAT
                 (
                     ID            VARCHAR2(36),
                     F_NR          VARCHAR2(11),
