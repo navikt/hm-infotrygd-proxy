@@ -1,6 +1,8 @@
 package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import no.nav.hjelpemidler.configuration.Environment
+import no.nav.hjelpemidler.configuration.TestEnvironment
 import no.nav.hjelpemidler.database.JdbcOperations
 import no.nav.hjelpemidler.database.transactionAsync
 import no.nav.hjelpemidler.database.withDatabaseContext
@@ -29,5 +31,19 @@ class Database(private val dataSource: DataSource) : Closeable {
 
     class DaoProvider(jdbcOperations: JdbcOperations) {
         val infotrygdDao = InfotrygdDao(jdbcOperations)
+    }
+}
+
+/**
+ * NB! Kan ikke opprette temporary table i CURRENT_SCHEMA, kun i schema for bruker.
+ */
+@JvmInline
+value class TemporaryTableName(private val value: String) {
+    private val schema get() = Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME
+
+    override fun toString(): String = if (Environment.current != TestEnvironment) {
+        "$schema.ORA\$PTT_$value"
+    } else {
+        "ORA\$PTT_$value"
     }
 }

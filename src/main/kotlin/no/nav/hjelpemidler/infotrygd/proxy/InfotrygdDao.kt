@@ -23,15 +23,7 @@ private val log = KotlinLogging.logger {}
 class InfotrygdDao(private val tx: JdbcOperations) {
     fun hentVedtaksresultat(requests: List<VedtaksresultatRequest>): List<VedtaksresultatResponse> {
         if (requests.isEmpty()) return emptyList()
-        /**
-         * Kan ikke opprette temporary table i CURRENT_SCHEMA, kun i schema for bruker.
-         */
-        val temporaryTableName = if (Environment.current != TestEnvironment) {
-            Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME + ".ORA" + '$' + "PTT_HENT_VEDTAKSRESULTAT"
-        } else {
-            "ORA" + '$' + "PTT_HENT_VEDTAKSRESULTAT"
-        }
-        log.info { "Benytter temporaryTableName: $temporaryTableName" }
+        val temporaryTableName = TemporaryTableName("HENT_VEDTAKSRESULTAT")
         if (Environment.current != TestEnvironment) {
             // Oppretter og lagrer innslag i temporærtabell for å slippe dynamisk IN-clause eller flere kall mot databasen.
             // Tabellen eksisterer i minne kun for denne transaksjonen.
