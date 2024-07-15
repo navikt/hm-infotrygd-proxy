@@ -10,6 +10,8 @@ import javax.sql.DataSource
 private val log = KotlinLogging.logger {}
 
 class Database(private val dataSource: DataSource) : Closeable {
+    private val schema = Configuration.HM_INFOTRYGD_PROXY_DB_NAME
+
     suspend fun isValid(): Boolean = withDatabaseContext {
         dataSource.connection.use {
             it.isValid(10)
@@ -17,6 +19,7 @@ class Database(private val dataSource: DataSource) : Closeable {
     }
 
     suspend fun <T> transaction(block: DaoProvider.() -> T): T = transactionAsync(dataSource, strict = true) {
+        it.execute("""ALTER SESSION SET CURRENT_SCHEMA = $schema""")
         DaoProvider(it).block()
     }
 
