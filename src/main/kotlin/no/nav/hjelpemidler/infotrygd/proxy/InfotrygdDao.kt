@@ -23,12 +23,18 @@ private val log = KotlinLogging.logger {}
 class InfotrygdDao(private val tx: JdbcOperations) {
     fun hentVedtaksresultat(requests: List<VedtaksresultatRequest>): List<VedtaksresultatResponse> {
         if (requests.isEmpty()) return emptyList()
+        val temporaryTableName = if (Environment.current != TestEnvironment) {
+            Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME + ".ORA" + '$' + "PTT_HENT_VEDTAKSRESULTAT"
+        } else {
+            "ORA" + '$' + "PTT_HENT_VEDTAKSRESULTAT"
+        }
+        log.info { "Benytter temporaryTableName: $temporaryTableName" }
         if (Environment.current != TestEnvironment) {
             // Oppretter og lagrer innslag i temporærtabell for å slippe dynamisk IN-clause eller flere kall mot databasen.
             // Tabellen eksisterer i minne kun for denne transaksjonen.
             tx.execute(
                 """
-                CREATE PRIVATE TEMPORARY TABLE ${Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME}.ORA${'$'}PTT_HENT_VEDTAKSRESULTAT
+                CREATE PRIVATE TEMPORARY TABLE $temporaryTableName
                 (
                     ID            VARCHAR2(36),
                     F_NR          VARCHAR2(11),
@@ -41,7 +47,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         }
         tx.batch(
             """
-                INSERT INTO ORA${'$'}PTT_HENT_VEDTAKSRESULTAT (ID, F_NR, TK_NR, S05_SAKSBLOKK, S10_SAKSNR)
+                INSERT INTO $temporaryTableName (ID, F_NR, TK_NR, S05_SAKSBLOKK, S10_SAKSNR)
                 VALUES (:id, :fnr, :tknr, :saksblokk, :saksnr)
             """.trimIndent(),
             requests,
@@ -61,7 +67,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                        sak.S10_VALG,
                        sak.S10_UNDERVALG,
                        sak.S10_TYPE
-                FROM ORA${'$'}PTT_HENT_VEDTAKSRESULTAT hent_vedtaksresultat
+                FROM $temporaryTableName hent_vedtaksresultat
                          LEFT JOIN SA_SAK_10 sak ON sak.F_NR = hent_vedtaksresultat.F_NR
                     AND sak.TK_NR = hent_vedtaksresultat.TK_NR
                     AND sak.S05_SAKSBLOKK = hent_vedtaksresultat.S05_SAKSBLOKK
