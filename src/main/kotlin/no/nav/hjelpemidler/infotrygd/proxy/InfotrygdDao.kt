@@ -23,6 +23,9 @@ private val log = KotlinLogging.logger {}
 class InfotrygdDao(private val tx: JdbcOperations) {
     fun hentVedtaksresultat(requests: List<VedtaksresultatRequest>): List<VedtaksresultatResponse> {
         if (requests.isEmpty()) return emptyList()
+        /**
+         * Kan ikke opprette temporary table i CURRENT_SCHEMA, kun i schema for bruker.
+         */
         val temporaryTableName = if (Environment.current != TestEnvironment) {
             Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME + ".ORA" + '$' + "PTT_HENT_VEDTAKSRESULTAT"
         } else {
@@ -102,7 +105,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 """
                     SELECT hent_vedtaksresultat.ID,
                            COUNT(1) AS ANTALL
-                    FROM ORA${'$'}PTT_HENT_VEDTAKSRESULTAT hent_vedtaksresultat
+                    FROM $temporaryTableName hent_vedtaksresultat
                              INNER JOIN SA_SAK_10 sak ON sak.F_NR = hent_vedtaksresultat.F_NR
                         AND sak.TK_NR = hent_vedtaksresultat.TK_NR
                     WHERE (sak.DB_SPLITT = 'HJ' OR sak.DB_SPLITT = '99')
