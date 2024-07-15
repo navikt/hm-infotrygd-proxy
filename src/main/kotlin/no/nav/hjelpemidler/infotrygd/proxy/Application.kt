@@ -57,6 +57,8 @@ fun Application.module() {
         username = Configuration.HM_INFOTRYGD_PROXY_DB_USERNAME
         password = Configuration.HM_INFOTRYGD_PROXY_DB_PASSWORD
         databaseName = Configuration.HM_INFOTRYGD_PROXY_DB_NAME
+        schema = Configuration.HM_INFOTRYGD_PROXY_DB_NAME
+        connectionInitSql = """ALTER SESSION SET CURRENT_SCHEMA = $schema"""
     }.let(::Database)
     environment.monitor.subscribe(ApplicationStopping) {
         database.close()
