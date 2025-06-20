@@ -11,8 +11,6 @@ spec:
   replicas:
     min: 1
     max: 1
-  secureLogs:
-    enabled: true
   liveness:
     path: /isalive
   readiness:
@@ -54,6 +52,10 @@ spec:
         - application: hm-soknad-api
           namespace: teamdigihot
           cluster: prod-gcp
+    outbound:
+      rules:
+        - application: logging
+          namespace: nais-system
   env:
     - name: HM_INFOTRYGD_PROXY_DB_NAME
       value: INFOTRYGD_HJP

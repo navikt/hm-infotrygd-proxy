@@ -25,7 +25,6 @@ import no.nav.hjelpemidler.database.createDataSource
 import org.slf4j.event.Level
 
 private val log = KotlinLogging.logger {}
-private val sikkerlogg = KotlinLogging.logger("tjenestekall")
 
 fun main(args: Array<String>) = EngineMain.main(args)
 
