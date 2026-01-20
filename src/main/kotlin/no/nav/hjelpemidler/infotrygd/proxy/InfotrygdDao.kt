@@ -169,6 +169,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                     S10.S10_BEHEN_ENHET,
                     substr(S10.S10_VEDTAKSDATO, -4,4) as AAR,
                     substr(S10.S10_VEDTAKSDATO, -6,2) as MAANED,
+                    substr(S10.S10_VEDTAKSDATO, -8,2) as DAG,
                     S20.S20_TEKSTKODE_1 as Brevkode,
                     S10.S10_VALG,
                     S10.S10_UNDERVALG,
@@ -185,8 +186,8 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                     AND S20.S05_SAKSBLOKK     = S10.S05_SAKSBLOKK
                     AND S20.S20_SAKSNR        = S10.S10_SAKSNR
                     AND S20.S20_TEKSTKODE_1  <> '    '
-                GROUP BY S10.S10_BEHEN_ENHET, substr(S10.S10_VEDTAKSDATO, -4,4), substr(S10.S10_VEDTAKSDATO, -6,2), S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
-                ORDER BY S10.S10_BEHEN_ENHET, substr(S10.S10_VEDTAKSDATO, -4,4), substr(S10.S10_VEDTAKSDATO, -6,2), S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+                GROUP BY S10.S10_BEHEN_ENHET, substr(S10.S10_VEDTAKSDATO, -4,4), substr(S10.S10_VEDTAKSDATO, -6,2), substr(S10.S10_VEDTAKSDATO, -8,2), S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+                ORDER BY S10.S10_BEHEN_ENHET, substr(S10.S10_VEDTAKSDATO, -4,4), substr(S10.S10_VEDTAKSDATO, -6,2), substr(S10.S10_VEDTAKSDATO, -8,2), S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
                 ;
             """.trimIndent(),
             mapOf(
@@ -199,6 +200,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 "enhet" to row.string("S10_BEHEN_ENHET"),
                 "år" to row.string("AAR"),
                 "måned" to row.string("MAANED"),
+                "dag" to row.string("DAG"),
                 "brevkode" to row.string("Brevkode"),
                 "valg" to row.string("S10_VALG"),
                 "undervalg" to row.string("S10_UNDERVALG"),
