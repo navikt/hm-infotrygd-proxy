@@ -179,8 +179,8 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 WHERE
                     S10.S10_KAPITTELNR    = 'HJ'
                     AND S10.S10_BEHEN_ENHET   = :enhet
-                    AND TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') <= TO_DATE(:maksDato, 'YYYY-MM-DD')
-                    AND TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') >= TO_DATE(:minDato, 'YYYY-MM-DD')
+                    AND TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') <= TO_DATE(:maksDato, 'DDMMYYYY')
+                    AND TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') >= TO_DATE(:minDato, 'DDMMYYYY')
                     AND S20.S01_PERSONKEY     = S10.S01_PERSONKEY
                     AND S20.S05_SAKSBLOKK     = S10.S05_SAKSBLOKK
                     AND S20.S20_SAKSNR        = S10.S10_SAKSNR
