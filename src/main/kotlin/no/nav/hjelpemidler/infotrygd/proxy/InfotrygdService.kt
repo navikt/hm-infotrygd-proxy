@@ -2,6 +2,7 @@ package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Fødselsnummer
+import java.time.LocalDate
 
 private val log = KotlinLogging.logger {}
 
@@ -32,6 +33,13 @@ class InfotrygdService(private val database: Database) {
         return database.transaction {
             val harVedtakFraFør = infotrygdDao.harVedtakFraFør(fnr)
             HarVedtakFraFørResponse(harVedtakFraFør)
+        }
+    }
+
+    suspend fun hentBrevstatistikk(enhet: String, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, String>> {
+        log.info { "Henter brevstatistikk for $enhet (minVedtaksdato: $minVedtaksdato, maksVedtaksdato: $maksVedtaksdato)" }
+        return database.transaction {
+            infotrygdDao.hentBrevstatistikk(enhet, minVedtaksdato, maksVedtaksdato)
         }
     }
 

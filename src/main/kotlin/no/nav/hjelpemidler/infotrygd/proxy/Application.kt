@@ -23,6 +23,7 @@ import no.nav.hjelpemidler.configuration.Environment
 import no.nav.hjelpemidler.database.Oracle
 import no.nav.hjelpemidler.database.createDataSource
 import org.slf4j.event.Level
+import java.time.LocalDate
 
 private val log = KotlinLogging.logger {}
 
@@ -86,6 +87,17 @@ fun Application.module() {
             post("/har-vedtak-fra-for") {
                 val request = call.receive<HarVedtakFraFørRequest>()
                 val response = infotrygdService.harVedtakFraFør(request.fnr)
+                call.respond(response)
+            }
+
+            post("/hent-brevstatistikk") {
+                data class Request(
+                    val enhet: String,
+                    val minVedtaksdato: LocalDate,
+                    val maksVedtaksdato: LocalDate,
+                )
+                val req = call.receive<Request>()
+                val response = infotrygdService.hentBrevstatistikk(req.enhet, req.minVedtaksdato, req.maksVedtaksdato)
                 call.respond(response)
             }
 

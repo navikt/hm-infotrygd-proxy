@@ -162,6 +162,53 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         ) { true } == true
     }
 
+    fun hentBrevstatistikk(enhet: String, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, String>> {
+        return tx.list(
+            """
+                SELECT
+                    S10.S10_BEHEN_ENHET,
+                    substr(S10.S10_VEDTAKSDATO, -4,4) as AAR,
+                    substr(S10.S10_VEDTAKSDATO, -6,2) as MAANED,
+                    S20.S20_TEKSTKODE_1 as Brevkode,
+                    S10.S10_VALG,
+                    S10.S10_UNDERVALG,
+                    S10.S10_TYPE,
+                    S10.S10_RESULTAT,
+                    count(*) as ANTALL
+                FROM SA_SAK_10 S10, SA_HENDELSE_20 S20
+                WHERE
+                    S10.S10_KAPITTELNR    = 'HJ'
+                    AND S10.S10_BEHEN_ENHET   = :enhet
+                    AND TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') <= TO_DATE(:maksDato, 'YYYY-MM-DD')
+                    AND TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') >= TO_DATE(:minDato, 'YYYY-MM-DD')
+                    AND S20.S01_PERSONKEY     = S10.S01_PERSONKEY
+                    AND S20.S05_SAKSBLOKK     = S10.S05_SAKSBLOKK
+                    AND S20.S20_SAKSNR        = S10.S10_SAKSNR
+                    AND S20.S20_TEKSTKODE_1  <> '    '
+                GROUP BY S10.S10_BEHEN_ENHET, substr(S10.S10_VEDTAKSDATO, -4,4), substr(S10.S10_VEDTAKSDATO, -6,2), S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+                ORDER BY S10.S10_BEHEN_ENHET, substr(S10.S10_VEDTAKSDATO, -4,4), substr(S10.S10_VEDTAKSDATO, -6,2), S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+                ;
+            """.trimIndent(),
+            mapOf(
+                "enhet" to enhet,
+                "maksDato" to maksVedtaksdato,
+                "minDato" to minVedtaksdato,
+            ).tilInfotrygdformat(),
+        ) { row ->
+            mapOf(
+                "enhet" to row.string("S10_BEHEN_ENHET"),
+                "år" to row.string("AAR"),
+                "måned" to row.string("MAANED"),
+                "brevkode" to row.string("Brevkode"),
+                "valg" to row.string("S10_VALG"),
+                "undervalg" to row.string("S10_UNDERVALG"),
+                "type" to row.string("S10_TYPE"),
+                "resultat" to row.string("S10_RESULTAT"),
+                "antall" to row.string("ANTALL"),
+            )
+        }
+    }
+
     fun hentSakerForBruker(fnr: Fødselsnummer): List<HentSakerForBrukerResponse> {
         // fixme -> skriv om til inner join (eller slett om den ikke brukes)
         return tx.list(
