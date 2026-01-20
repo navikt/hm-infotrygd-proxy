@@ -162,7 +162,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         ) { true } == true
     }
 
-    fun hentBrevstatistikk(enhet: String, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, String>> {
+    fun hentBrevstatistikk(enhet: String, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, Any>> {
         return tx.list(
             """
                 SELECT
@@ -204,7 +204,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 "undervalg" to row.string("S10_UNDERVALG"),
                 "type" to row.string("S10_TYPE"),
                 "resultat" to row.string("S10_RESULTAT"),
-                "antall" to row.string("ANTALL"),
+                "antall" to row.int("ANTALL"),
             )
         }
     }

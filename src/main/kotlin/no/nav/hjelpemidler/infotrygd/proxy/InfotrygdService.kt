@@ -36,7 +36,7 @@ class InfotrygdService(private val database: Database) {
         }
     }
 
-    suspend fun hentBrevstatistikk(enhet: String, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, String>> {
+    suspend fun hentBrevstatistikk(enhet: String, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, Any>> {
         log.info { "Henter brevstatistikk for $enhet (minVedtaksdato: $minVedtaksdato, maksVedtaksdato: $maksVedtaksdato)" }
         return database.transaction {
             infotrygdDao.hentBrevstatistikk(enhet, minVedtaksdato, maksVedtaksdato)
