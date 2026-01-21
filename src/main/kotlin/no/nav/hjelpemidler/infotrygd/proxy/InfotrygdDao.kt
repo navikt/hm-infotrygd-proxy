@@ -188,7 +188,6 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                     AND S20.S20_TEKSTKODE_1  <> '    '
                 GROUP BY S10.S10_BEHEN_ENHET, substr(S10.S10_VEDTAKSDATO, -4,4), substr(S10.S10_VEDTAKSDATO, -6,2), substr(S10.S10_VEDTAKSDATO, -8,2), S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
                 ORDER BY S10.S10_BEHEN_ENHET, substr(S10.S10_VEDTAKSDATO, -4,4), substr(S10.S10_VEDTAKSDATO, -6,2), substr(S10.S10_VEDTAKSDATO, -8,2), S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
-                ;
             """.trimIndent(),
             mapOf(
                 "enhet" to enhet,
