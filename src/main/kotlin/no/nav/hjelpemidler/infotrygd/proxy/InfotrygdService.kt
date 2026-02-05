@@ -43,6 +43,13 @@ class InfotrygdService(private val database: Database) {
         }
     }
 
+    suspend fun hentBrevstatistikk2(enhet: String, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate, digitaleOppgaveIder: Set<String>): List<Map<String, Any>> {
+        log.info { "Henter brevstatistikk for $enhet (minVedtaksdato: $minVedtaksdato, maksVedtaksdato: $maksVedtaksdato, len(digitaleOppgaveIder): ${digitaleOppgaveIder.size})" }
+        return database.transaction {
+            infotrygdDao.hentBrevstatistikk2(enhet, minVedtaksdato, maksVedtaksdato, digitaleOppgaveIder)
+        }
+    }
+
     suspend fun hentSakerForBruker(fnr: Fødselsnummer): List<HentSakerForBrukerResponse> {
         log.info { "Henter saker for bruker" }
         return database.transaction {
