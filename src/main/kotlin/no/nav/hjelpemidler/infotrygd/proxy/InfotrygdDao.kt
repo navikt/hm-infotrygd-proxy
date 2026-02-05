@@ -247,7 +247,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                     S10.S10_RESULTAT,
                     count(*) as ANTALL
                 FROM SA_SAK_10 S10, SA_HENDELSE_20 S20
-                LEFT JOIN $temporaryTableName OIDER ON S10.S10_ES_GSAK_OPPDRAGSID = OIDER.OPPGAVE_ID
+                LEFT OUTER JOIN $temporaryTableName OIDER ON S10.S10_ES_GSAK_OPPDRAGSID = OIDER.OPPGAVE_ID
                 WHERE
                     S10.S10_KAPITTELNR    = 'HJ'
                     AND S10.S10_BEHEN_ENHET   = :enhet
