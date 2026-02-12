@@ -146,6 +146,23 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         ) { true } == true
     }
 
+    fun harVedtakOmHøreapparat(fnr: Fødselsnummer): Boolean {
+        return tx.singleOrNull(
+            """
+                SELECT 1
+                FROM SA_SAK_10
+                WHERE F_NR = :fnr
+                  AND S10_VALG = 'HØ'
+                  AND (S10_UNDERVALG = 'DA' OR S10_UNDERVALG = 'UL') -- DA og UL er begge Dagliglivet
+                  AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+                FETCH FIRST 1 ROWS ONLY
+            """.trimIndent(),
+            mapOf(
+                "fnr" to fnr,
+            ).tilInfotrygdformat(),
+        ) { true } == true
+    }
+
     fun harVedtakFraFør(fnr: Fødselsnummer): Boolean {
         return tx.singleOrNull(
             """

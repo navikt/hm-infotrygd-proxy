@@ -9,6 +9,7 @@ on:
       - "CODEOWNERS"
     branches:
       - main
+      - HarVedtakOmHøreapparatSjekk
 
 jobs:
   build:
