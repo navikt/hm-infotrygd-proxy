@@ -84,6 +84,13 @@ fun Application.module() {
                 call.respond(response)
             }
 
+            post("/har-vedtak-om-ha") {
+                val request = call.receive<HarVedtakOmHøreapparatRequest>()
+                val response = infotrygdService.harVedtakOmHøreapparat(request)
+                if (Environment.current.tier.isDev) response.resultat = true
+                call.respond(response)
+            }
+
             post("/har-vedtak-fra-for") {
                 val request = call.receive<HarVedtakFraFørRequest>()
                 val response = infotrygdService.harVedtakFraFør(request.fnr)

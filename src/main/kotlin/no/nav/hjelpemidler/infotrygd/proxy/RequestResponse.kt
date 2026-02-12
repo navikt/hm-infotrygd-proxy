@@ -87,6 +87,14 @@ data class HarVedtakForResponse(
     var resultat: Boolean,
 )
 
+data class HarVedtakOmHøreapparatRequest(
+    val fnr: Fødselsnummer,
+)
+
+data class HarVedtakOmHøreapparatResponse(
+    var resultat: Boolean,
+)
+
 data class HarVedtakFraFørRequest(
     val fnr: Fødselsnummer,
 )
