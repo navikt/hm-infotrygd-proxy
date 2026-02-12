@@ -146,7 +146,6 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         ) { true } == true
     }
 
-
     fun harVedtakOmHøreapparat(fnr: Fødselsnummer): Boolean {
         return tx.singleOrNull(
             """
@@ -159,11 +158,10 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 FETCH FIRST 1 ROWS ONLY
             """.trimIndent(),
             mapOf(
-                "fnr" to fnr
+                "fnr" to fnr,
             ).tilInfotrygdformat(),
         ) { true } == true
     }
-
 
     fun harVedtakFraFør(fnr: Fødselsnummer): Boolean {
         return tx.singleOrNull(
