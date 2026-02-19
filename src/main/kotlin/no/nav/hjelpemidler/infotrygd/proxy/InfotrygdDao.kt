@@ -236,7 +236,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 """
                 CREATE PRIVATE TEMPORARY TABLE $temporaryTableName
                 (
-                    OPPGAVE_ID VARCHAR2(50),
+                    OPPGAVE_ID NUMBER(10),
                     FOUNDIT NUMBER(1)
                 ) ON COMMIT DROP DEFINITION
                 """.trimIndent(),
