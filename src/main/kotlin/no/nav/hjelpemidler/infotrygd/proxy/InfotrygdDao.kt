@@ -236,15 +236,16 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 """
                 CREATE PRIVATE TEMPORARY TABLE $temporaryTableName
                 (
-                    OPPGAVE_ID VARCHAR2(50)
+                    OPPGAVE_ID VARCHAR2(50),
+                    FOUNDIT NUMBER(1)
                 ) ON COMMIT DROP DEFINITION
                 """.trimIndent(),
             )
         }
         tx.batch(
             """
-                INSERT INTO $temporaryTableName (OPPGAVE_ID)
-                VALUES (:oppgaveId)
+                INSERT INTO $temporaryTableName (OPPGAVE_ID, FOUNDIT)
+                VALUES (:oppgaveId, 1)
             """.trimIndent(),
             digitaleOppgaveIder,
             { oppgaveId ->
@@ -256,7 +257,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 SELECT
                     S10.S10_BEHEN_ENHET,
                     TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') as DATO,
-                    (CASE WHEN OIDER.OPPGAVE_ID IS NOT NULL THEN 1 ELSE 0 END) as DIGITAL,
+                    (CASE WHEN OIDER.FOUNDIT = 1 THEN 1 ELSE 0 END) as DIGITAL,
                     S20.S20_TEKSTKODE_1 as BREVKODE,
                     S10.S10_VALG,
                     S10.S10_UNDERVALG,
@@ -275,8 +276,8 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                     AND S20.S05_SAKSBLOKK     = S10.S05_SAKSBLOKK
                     AND S20.S20_SAKSNR        = S10.S10_SAKSNR
                     AND S20.S20_TEKSTKODE_1  <> '    '
-                GROUP BY S10.S10_BEHEN_ENHET, TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), CASE WHEN OIDER.OPPGAVE_ID IS NOT NULL THEN 1 ELSE 0 END, S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
-                ORDER BY S10.S10_BEHEN_ENHET, TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), CASE WHEN OIDER.OPPGAVE_ID IS NOT NULL THEN 1 ELSE 0 END, S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+                GROUP BY S10.S10_BEHEN_ENHET, TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), CASE WHEN OIDER.FOUNDIT = 1 THEN 1 ELSE 0 END, S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+                ORDER BY S10.S10_BEHEN_ENHET, TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), CASE WHEN OIDER.FOUNDIT = 1 THEN 1 ELSE 0 END, S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
             """.trimIndent(),
             mapOf(
                 "enhet" to enhet,
