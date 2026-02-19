@@ -287,7 +287,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
             mapOf(
                 "enhet" to row.string("S10_BEHEN_ENHET"),
                 "dato" to row.localDate("DATO"),
-                "digital" to row.boolean("DIGITAL"),
+                "digital" to row.string("DIGITAL"),
                 "brevkode" to row.string("BREVKODE"),
                 "valg" to row.string("S10_VALG"),
                 "undervalg" to row.string("S10_UNDERVALG"),
