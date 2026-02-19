@@ -60,13 +60,6 @@ class InfotrygdService(private val database: Database) {
         }
     }
 
-    suspend fun harSakMedEsGsakOppdragsId(id: String): Boolean {
-        log.info { "Sjekker om harSakMedEsGsakOppdragsId: id: $id" }
-        return database.transaction {
-            infotrygdDao.harSakMedEsGsakOppdragsId(id)
-        }
-    }
-
     suspend fun hentSakerForBruker(fnr: Fødselsnummer): List<HentSakerForBrukerResponse> {
         log.info { "Henter saker for bruker" }
         return database.transaction {

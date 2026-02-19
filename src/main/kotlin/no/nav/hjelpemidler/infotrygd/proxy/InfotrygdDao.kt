@@ -299,20 +299,6 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         }
     }
 
-    fun harSakMedEsGsakOppdragsId(id: String): Boolean {
-        return tx.singleOrNull(
-            """
-                SELECT 1
-                FROM SA_SAK_10 sak
-                WHERE sak.S10_ES_GSAK_OPPDRAGSID LIKE '%:id%'
-                FETCH FIRST 1 ROWS ONLY
-            """.trimIndent(),
-            mapOf("id" to id),
-        ) { row ->
-            true
-        } == true
-    }
-
     fun hentSakerForBruker(fnr: Fødselsnummer): List<HentSakerForBrukerResponse> {
         // fixme -> skriv om til inner join (eller slett om den ikke brukes)
         return tx.list(

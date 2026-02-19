@@ -120,18 +120,6 @@ fun Application.module() {
                 call.respond(response)
             }
 
-            post("/har-sak-med-es-gsak-oppdragsid") {
-                data class Request(
-                    val id: String,
-                )
-                data class Response(
-                    val harId: Boolean,
-                )
-                val req = call.receive<Request>()
-                val response = infotrygdService.harSakMedEsGsakOppdragsId(req.id)
-                call.respond(Response(harId = response))
-            }
-
             // fixme -> slett denne, ser ikke ut som den er i bruk
             post("/hent-saker-for-bruker") {
                 val request = call.receive<HentSakerForBrukerRequest>()
