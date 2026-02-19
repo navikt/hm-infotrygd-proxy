@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
@@ -122,6 +123,7 @@ fun Application.module() {
                     call.respond(response)
                 }.getOrElse { e ->
                     log.error(e) { "Feilet i å hente brevstatistikk2" }
+                    call.respond(HttpStatusCode.InternalServerError, "Feilet i å hente brevstatistikk2")
                 }
             }
 
