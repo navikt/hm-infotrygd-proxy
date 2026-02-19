@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
@@ -116,15 +115,9 @@ fun Application.module() {
                     val maksVedtaksdato: LocalDate,
                     val digitaleOppgaveIder: Set<String>,
                 )
-                runCatching {
-                    val req = call.receive<Request>()
-                    val response = infotrygdService.hentBrevstatistikk2(req.enhet, req.minVedtaksdato, req.maksVedtaksdato, req.digitaleOppgaveIder)
-                    log.info { "DEBUG: Hentet brevstatistikk req: $req, response: $response" }
-                    call.respond(response)
-                }.getOrElse { e ->
-                    log.error(e) { "Feilet i å hente brevstatistikk2" }
-                    call.respond(HttpStatusCode.InternalServerError, "Feilet i å hente brevstatistikk2")
-                }
+                val req = call.receive<Request>()
+                val response = infotrygdService.hentBrevstatistikk2(req.enhet, req.minVedtaksdato, req.maksVedtaksdato, req.digitaleOppgaveIder)
+                call.respond(response)
             }
 
             // fixme -> slett denne, ser ikke ut som den er i bruk
