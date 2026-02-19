@@ -108,18 +108,6 @@ fun Application.module() {
                 call.respond(response)
             }
 
-            post("/hent-brevstatistikk2") {
-                data class Request(
-                    val enhet: String,
-                    val minVedtaksdato: LocalDate,
-                    val maksVedtaksdato: LocalDate,
-                    val digitaleOppgaveIder: Set<String>,
-                )
-                val req = call.receive<Request>()
-                val response = infotrygdService.hentBrevstatistikk2(req.enhet, req.minVedtaksdato, req.maksVedtaksdato, req.digitaleOppgaveIder)
-                call.respond(response)
-            }
-
             // fixme -> slett denne, ser ikke ut som den er i bruk
             post("/hent-saker-for-bruker") {
                 val request = call.receive<HentSakerForBrukerRequest>()
