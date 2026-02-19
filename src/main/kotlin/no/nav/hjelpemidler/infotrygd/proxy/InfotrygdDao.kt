@@ -231,7 +231,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         val temporaryTableName = TemporaryTableName("HENT_BREVSTATISTIKK")
         if (Environment.current != TestEnvironment) {
             // Oppretter og lagrer innslag i temporærtabell for å slippe dynamisk IN-clause eller flere kall mot databasen.
-            // Tabellen eksisterer i minne kun for denne transaksjonen.
+            // Tabellen eksisterer i minne kun for denne transaksjonen..
             tx.execute(
                 """
                 CREATE PRIVATE TEMPORARY TABLE $temporaryTableName
