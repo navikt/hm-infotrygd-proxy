@@ -22,6 +22,7 @@ import io.ktor.server.routing.routing
 import no.nav.hjelpemidler.configuration.Environment
 import no.nav.hjelpemidler.database.Oracle
 import no.nav.hjelpemidler.database.createDataSource
+import no.nav.hjelpemidler.infotrygd.proxy.domain.InfotrygdPrimaryKey
 import org.slf4j.event.Level
 import java.time.LocalDate
 
@@ -105,6 +106,18 @@ fun Application.module() {
                 )
                 val req = call.receive<Request>()
                 val response = infotrygdService.hentBrevstatistikk(req.enhet, req.minVedtaksdato, req.maksVedtaksdato)
+                call.respond(response)
+            }
+
+            post("/hent-brevstatistikk2") {
+                data class Request(
+                    val enheter: Set<String>,
+                    val minVedtaksdato: LocalDate,
+                    val maksVedtaksdato: LocalDate,
+                    val pker: List<InfotrygdPrimaryKey>,
+                )
+                val req = call.receive<Request>()
+                val response = infotrygdService.hentBrevstatistikk2(req.enheter, req.minVedtaksdato, req.maksVedtaksdato, req.pker)
                 call.respond(response)
             }
 

@@ -5,6 +5,7 @@ import no.nav.hjelpemidler.configuration.Environment
 import no.nav.hjelpemidler.configuration.TestEnvironment
 import no.nav.hjelpemidler.database.JdbcOperations
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Fødselsnummer
+import no.nav.hjelpemidler.infotrygd.proxy.domain.InfotrygdPrimaryKey
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Saksblokk
 import no.nav.hjelpemidler.infotrygd.proxy.domain.Saksnummer
 import no.nav.hjelpemidler.infotrygd.proxy.domain.fødelsnummer
@@ -217,6 +218,99 @@ class InfotrygdDao(private val tx: JdbcOperations) {
                 "år" to row.string("AAR"),
                 "måned" to row.string("MAANED"),
                 "dag" to row.string("DAG"),
+                "brevkode" to row.string("Brevkode"),
+                "valg" to row.string("S10_VALG"),
+                "undervalg" to row.string("S10_UNDERVALG"),
+                "type" to row.string("S10_TYPE"),
+                "resultat" to row.string("S10_RESULTAT"),
+                "antall" to row.int("ANTALL"),
+            )
+        }
+    }
+
+    fun hentBrevstatistikk2(enheter: Set<String>, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate, pker: List<InfotrygdPrimaryKey>): List<Map<String, Any>> {
+        val temporaryTableNameEnheter = TemporaryTableName("HENT_BREVSTATISTIKK2_ENHETER")
+        val temporaryTableNamePker = TemporaryTableName("HENT_BREVSTATISTIKK2_PKER")
+        if (Environment.current != TestEnvironment) {
+            // Oppretter og lagrer innslag i temporærtabell for å slippe dynamisk IN-clause eller flere kall mot databasen.
+            // Tabellen eksisterer i minne kun for denne transaksjonen.
+            tx.execute(
+                """
+                CREATE PRIVATE TEMPORARY TABLE $temporaryTableNameEnheter
+                (
+                    S10_BEHEN_ENHET          VARCHAR2(4)
+                ) ON COMMIT DROP DEFINITION
+                """.trimIndent(),
+            )
+            tx.execute(
+                """
+                CREATE PRIVATE TEMPORARY TABLE $temporaryTableNamePker
+                (
+                    F_NR          VARCHAR2(11),
+                    TK_NR         VARCHAR2(4),
+                    S05_SAKSBLOKK CHAR(1),
+                    S10_SAKSNR    CHAR(2)
+                ) ON COMMIT DROP DEFINITION
+                """.trimIndent(),
+            )
+        }
+        tx.batch(
+            """
+                INSERT INTO $temporaryTableNameEnheter (S10_BEHEN_ENHET)
+                VALUES (:enhet)
+            """.trimIndent(),
+            enheter,
+        ) {
+            mapOf("enhet" to it)
+        }
+        tx.batch(
+            """
+                INSERT INTO $temporaryTableNamePker (F_NR, TK_NR, S05_SAKSBLOKK, S10_SAKSNR)
+                VALUES (:fnr, :tknr, :saksblokk, :saksnr)
+            """.trimIndent(),
+            pker,
+            InfotrygdPrimaryKey::toMap,
+        )
+        return tx.list(
+            """
+                SELECT
+                    S10.S10_BEHEN_ENHET,
+                    TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') as DATO,
+                    CASE WHEN PKER.F_NR IS NOT NULL THEN 1 ELSE 0 END as DIGITAL,
+                    S20.S20_TEKSTKODE_1 as Brevkode,
+                    S10.S10_VALG,
+                    S10.S10_UNDERVALG,
+                    S10.S10_TYPE,
+                    S10.S10_RESULTAT,
+                    count(*) as ANTALL
+                FROM SA_SAK_10 S10
+                CROSS JOIN SA_HENDELSE_20 S20
+                INNER JOIN $temporaryTableNameEnheter ENHETER ON ENHETER.S10_BEHEN_ENHET = S10.S10_BEHEN_ENHET
+                LEFT JOIN $temporaryTableNamePker PKER
+                    ON  PKER.F_NR = S10.F_NR
+                    AND PKER.TK_NR = S10.TK_NR
+                    AND PKER.S05_SAKSBLOKK = S10.S05_SAKSBLOKK
+                    AND PKER.S10_SAKSNR = S10.S10_SAKSNR
+                WHERE
+                    S10.S10_KAPITTELNR    = 'HJ'
+                    AND TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') <= TO_DATE(:maksDato, 'DDMMYYYY')
+                    AND TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') >= TO_DATE(:minDato, 'DDMMYYYY')
+                    AND S20.S01_PERSONKEY     = S10.S01_PERSONKEY
+                    AND S20.S05_SAKSBLOKK     = S10.S05_SAKSBLOKK
+                    AND S20.S20_SAKSNR        = S10.S10_SAKSNR
+                    AND S20.S20_TEKSTKODE_1  <> '    '
+                GROUP BY S10.S10_BEHEN_ENHET, TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), CASE WHEN PKER.F_NR IS NOT NULL THEN 1 ELSE 0 END, S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+                ORDER BY S10.S10_BEHEN_ENHET, TO_DATE(S10.S10_VEDTAKSDATO DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), CASE WHEN PKER.F_NR IS NOT NULL THEN 1 ELSE 0 END, S20.S20_TEKSTKODE_1, S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+            """.trimIndent(),
+            mapOf(
+                "maksDato" to maksVedtaksdato,
+                "minDato" to minVedtaksdato,
+            ).tilInfotrygdformat(),
+        ) { row ->
+            mapOf(
+                "enhet" to row.string("S10_BEHEN_ENHET"),
+                "dato" to row.localDate("DATO"),
+                "digital" to row.boolean("DIGITAL"),
                 "brevkode" to row.string("Brevkode"),
                 "valg" to row.string("S10_VALG"),
                 "undervalg" to row.string("S10_UNDERVALG"),
