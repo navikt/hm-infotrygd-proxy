@@ -110,7 +110,7 @@ fun Application.module() {
                 call.respond(response)
             }
 
-            post("/hent-vedtakstatistikk") {
+            post("/hent-vedtaksstatistikk") {
                 data class Request(
                     val minVedtaksdato: LocalDate,
                     val maksVedtaksdato: LocalDate,
