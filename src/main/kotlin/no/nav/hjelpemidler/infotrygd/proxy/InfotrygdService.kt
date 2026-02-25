@@ -47,17 +47,17 @@ class InfotrygdService(private val database: Database) {
         }
     }
 
-    suspend fun hentBrevstatistikk(enhet: String, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, Any>> {
-        log.info { "Henter brevstatistikk for $enhet (minVedtaksdato: $minVedtaksdato, maksVedtaksdato: $maksVedtaksdato)" }
+    suspend fun hentBrevstatistikk(enheter: Set<String>, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate, pker: List<InfotrygdPrimaryKey>): List<Map<String, Any>> {
+        log.info { "Henter brevstatistikk2 for $enheter (minVedtaksdato: $minVedtaksdato, maksVedtaksdato: $maksVedtaksdato, len(pker): ${pker.size})" }
         return database.transaction {
-            infotrygdDao.hentBrevstatistikk(enhet, minVedtaksdato, maksVedtaksdato)
+            infotrygdDao.hentBrevstatistikk(enheter, minVedtaksdato, maksVedtaksdato, pker)
         }
     }
 
-    suspend fun hentBrevstatistikk2(enheter: Set<String>, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate, pker: List<InfotrygdPrimaryKey>): List<Map<String, Any>> {
-        log.info { "Henter brevstatistikk2 for $enheter (minVedtaksdato: $minVedtaksdato, maksVedtaksdato: $maksVedtaksdato, len(pker): ${pker.size})" }
+    suspend fun hentVedtaksstatistikk(minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, Any>> {
+        log.info { "Henter vedtaksstatistikk (minVedtaksdato: $minVedtaksdato, maksVedtaksdato: $maksVedtaksdato)" }
         return database.transaction {
-            infotrygdDao.hentBrevstatistikk2(enheter, minVedtaksdato, maksVedtaksdato, pker)
+            infotrygdDao.hentVedtaksstatistikk(minVedtaksdato, maksVedtaksdato)
         }
     }
 

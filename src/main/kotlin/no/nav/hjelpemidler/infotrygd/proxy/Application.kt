@@ -98,17 +98,6 @@ fun Application.module() {
                 call.respond(response)
             }
 
-            post("/hent-brevstatistikk") {
-                data class Request(
-                    val enhet: String,
-                    val minVedtaksdato: LocalDate,
-                    val maksVedtaksdato: LocalDate,
-                )
-                val req = call.receive<Request>()
-                val response = infotrygdService.hentBrevstatistikk(req.enhet, req.minVedtaksdato, req.maksVedtaksdato)
-                call.respond(response)
-            }
-
             post("/hent-brevstatistikk2") {
                 data class Request(
                     val enheter: Set<String>,
@@ -117,7 +106,17 @@ fun Application.module() {
                     val pker: List<InfotrygdPrimaryKey>,
                 )
                 val req = call.receive<Request>()
-                val response = infotrygdService.hentBrevstatistikk2(req.enheter, req.minVedtaksdato, req.maksVedtaksdato, req.pker)
+                val response = infotrygdService.hentBrevstatistikk(req.enheter, req.minVedtaksdato, req.maksVedtaksdato, req.pker)
+                call.respond(response)
+            }
+
+            post("/hent-vedtakstatistikk") {
+                data class Request(
+                    val minVedtaksdato: LocalDate,
+                    val maksVedtaksdato: LocalDate,
+                )
+                val req = call.receive<Request>()
+                val response = infotrygdService.hentVedtaksstatistikk(req.minVedtaksdato, req.maksVedtaksdato)
                 call.respond(response)
             }
 
