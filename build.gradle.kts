@@ -23,14 +23,6 @@ dependencies {
             requireCapability("no.nav.hjelpemidler:database-oracle")
         }
     }
-
-    // Test
-    testImplementation(libs.hotlibs.test)
-    testImplementation(libs.hotlibs.database) {
-        capabilities {
-            requireCapability("no.nav.hjelpemidler:database-h2")
-        }
-    }
 }
 
 spotless {
@@ -71,6 +63,16 @@ testing {
     suites {
         val test by getting(JvmTestSuite::class) {
             useKotlinTest(libs.versions.kotlin.asProvider())
+
+            dependencies {
+                implementation(libs.hotlibs.test)
+                implementation(libs.hotlibs.database) {
+                    capabilities {
+                        requireCapability("no.nav.hjelpemidler:database-h2")
+                    }
+                }
+            }
+
             targets.all {
                 testTask {
                     environment("NAIS_CLUSTER_NAME", "test")
