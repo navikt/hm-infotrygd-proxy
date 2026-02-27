@@ -30,14 +30,14 @@ class InfotrygdDao(private val tx: JdbcOperations) {
             // Tabellen eksisterer i minne kun for denne transaksjonen.
             tx.execute(
                 """
-                CREATE PRIVATE TEMPORARY TABLE $temporaryTableName
-                (
-                    ID            VARCHAR2(36),
-                    F_NR          VARCHAR2(11),
-                    TK_NR         VARCHAR2(4),
-                    S05_SAKSBLOKK CHAR(1),
-                    S10_SAKSNR    CHAR(2)
-                ) ON COMMIT DROP DEFINITION
+                    CREATE PRIVATE TEMPORARY TABLE $temporaryTableName
+                    (
+                        ID            VARCHAR2(36),
+                        F_NR          VARCHAR2(11),
+                        TK_NR         VARCHAR2(4),
+                        S05_SAKSBLOKK CHAR(1),
+                        S10_SAKSNR    CHAR(2)
+                    ) ON COMMIT DROP DEFINITION
                 """.trimIndent(),
             )
         }
@@ -126,61 +126,60 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         }
     }
 
-    fun harVedtakFor(fnr: Fødselsnummer, vedtaksdato: LocalDate, saksblokk: Saksblokk, saksnr: Saksnummer): Boolean {
-        return tx.singleOrNull(
-            """
-                SELECT 1
-                FROM SA_SAK_10
-                WHERE F_NR = :fnr
-                  AND S10_VEDTAKSDATO = :vedtaksdato
-                  AND S05_SAKSBLOKK = :saksblokk
-                  AND S10_SAKSNR = :saksnr
-                  AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-                FETCH FIRST 1 ROWS ONLY
-            """.trimIndent(),
-            mapOf(
-                "fnr" to fnr,
-                "vedtaksdato" to vedtaksdato,
-                "saksblokk" to saksblokk,
-                "saksnr" to saksnr,
-            ).tilInfotrygdformat(),
-        ) { true } == true
-    }
+    fun harVedtakFor(fnr: Fødselsnummer, vedtaksdato: LocalDate, saksblokk: Saksblokk, saksnr: Saksnummer): Boolean = tx.singleOrNull(
+        """
+            SELECT 1
+            FROM SA_SAK_10
+            WHERE F_NR = :fnr
+              AND S10_VEDTAKSDATO = :vedtaksdato
+              AND S05_SAKSBLOKK = :saksblokk
+              AND S10_SAKSNR = :saksnr
+              AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            FETCH FIRST 1 ROWS ONLY
+        """.trimIndent(),
+        mapOf(
+            "fnr" to fnr,
+            "vedtaksdato" to vedtaksdato,
+            "saksblokk" to saksblokk,
+            "saksnr" to saksnr,
+        ).tilInfotrygdformat(),
+    ) { true } == true
 
-    fun harVedtakOmHøreapparat(fnr: Fødselsnummer): Boolean {
-        return tx.singleOrNull(
-            """
-                SELECT 1
-                FROM SA_SAK_10
-                WHERE F_NR = :fnr
-                  AND S10_VALG = 'HØ'
-                  AND (S10_UNDERVALG = 'DA' OR S10_UNDERVALG = 'UL') -- DA og UL er begge Dagliglivet
-                  AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-                FETCH FIRST 1 ROWS ONLY
-            """.trimIndent(),
-            mapOf(
-                "fnr" to fnr,
-            ).tilInfotrygdformat(),
-        ) { true } == true
-    }
+    fun harVedtakOmHøreapparat(fnr: Fødselsnummer): Boolean = tx.singleOrNull(
+        """
+            SELECT 1
+            FROM SA_SAK_10
+            WHERE F_NR = :fnr
+              AND S10_VALG = 'HØ'
+              AND (S10_UNDERVALG = 'DA' OR S10_UNDERVALG = 'UL') -- DA og UL er begge Dagliglivet
+              AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            FETCH FIRST 1 ROWS ONLY
+        """.trimIndent(),
+        mapOf(
+            "fnr" to fnr,
+        ).tilInfotrygdformat(),
+    ) { true } == true
 
-    fun harVedtakFraFør(fnr: Fødselsnummer): Boolean {
-        return tx.singleOrNull(
-            """
-                SELECT 1
-                FROM SA_SAK_10
-                WHERE F_NR = :fnr
-                  AND S10_RESULTAT <> 'A '
-                  AND S10_RESULTAT <> 'H '
-                  AND S10_RESULTAT <> 'HB'
-                  AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
-                FETCH FIRST 1 ROWS ONLY
-            """.trimIndent(),
-            mapOf("fnr" to fnr).tilInfotrygdformat(),
-        ) { true } == true
-    }
+    fun harVedtakFraFør(fnr: Fødselsnummer): Boolean = tx.singleOrNull(
+        """
+            SELECT 1
+            FROM SA_SAK_10
+            WHERE F_NR = :fnr
+              AND S10_RESULTAT <> 'A '
+              AND S10_RESULTAT <> 'H '
+              AND S10_RESULTAT <> 'HB'
+              AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            FETCH FIRST 1 ROWS ONLY
+        """.trimIndent(),
+        mapOf("fnr" to fnr).tilInfotrygdformat(),
+    ) { true } == true
 
-    fun hentBrevstatistikk(enheter: Set<String>, minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate, pker: List<InfotrygdPrimaryKey>): List<Map<String, Any>> {
+    fun hentBrevstatistikk(
+        enheter: Set<String>,
+        minVedtaksdato: LocalDate,
+        maksVedtaksdato: LocalDate,
+        pker: List<InfotrygdPrimaryKey>,
+    ): List<Map<String, Any>> {
         val temporaryTableNameEnheter = TemporaryTableName("HENT_BREVSTATISTIKK2_ENHETER")
         val temporaryTableNamePker = TemporaryTableName("HENT_BREVSTATISTIKK2_PKER")
         if (Environment.current != TestEnvironment) {
@@ -196,13 +195,13 @@ class InfotrygdDao(private val tx: JdbcOperations) {
             )
             tx.execute(
                 """
-                CREATE PRIVATE TEMPORARY TABLE $temporaryTableNamePker
-                (
-                    F_NR          VARCHAR2(11),
-                    TK_NR         VARCHAR2(4),
-                    S05_SAKSBLOKK CHAR(1),
-                    S10_SAKSNR    CHAR(2)
-                ) ON COMMIT DROP DEFINITION
+                    CREATE PRIVATE TEMPORARY TABLE $temporaryTableNamePker
+                    (
+                        F_NR          VARCHAR2(11),
+                        TK_NR         VARCHAR2(4),
+                        S05_SAKSBLOKK CHAR(1),
+                        S10_SAKSNR    CHAR(2)
+                    ) ON COMMIT DROP DEFINITION
                 """.trimIndent(),
             )
         }
@@ -273,41 +272,39 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         }
     }
 
-    fun hentVedtaksstatistikk(minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, Any>> {
-        return tx.list(
-            """
-                SELECT
-                    S10.S10_BEHEN_ENHET,
-                    TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') as DATO,
-                    S10.S10_VALG,
-                    S10.S10_UNDERVALG,
-                    S10.S10_TYPE,
-                    S10.S10_RESULTAT,
-                    count(*) as ANTALL
-                FROM SA_SAK_10 S10
-                WHERE
-                    S10.S10_KAPITTELNR    = 'HJ'
-                    AND TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') <= TO_DATE(:maksDato, 'DDMMYYYY')
-                    AND TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') >= TO_DATE(:minDato, 'DDMMYYYY')
-                    AND S10.S10_RESULTAT <> '  '
-                GROUP BY S10.S10_BEHEN_ENHET, TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
-                ORDER BY S10.S10_BEHEN_ENHET, TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
-            """.trimIndent(),
-            mapOf(
-                "maksDato" to maksVedtaksdato,
-                "minDato" to minVedtaksdato,
-            ).tilInfotrygdformat(),
-        ) { row ->
-            mapOf(
-                "enhet" to row.string("S10_BEHEN_ENHET"),
-                "dato" to row.localDate("DATO"),
-                "valg" to row.string("S10_VALG"),
-                "undervalg" to row.string("S10_UNDERVALG"),
-                "type" to row.string("S10_TYPE"),
-                "resultat" to row.string("S10_RESULTAT"),
-                "antall" to row.int("ANTALL"),
-            )
-        }
+    fun hentVedtaksstatistikk(minVedtaksdato: LocalDate, maksVedtaksdato: LocalDate): List<Map<String, Any>> = tx.list(
+        """
+            SELECT
+                S10.S10_BEHEN_ENHET,
+                TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') AS DATO,
+                S10.S10_VALG,
+                S10.S10_UNDERVALG,
+                S10.S10_TYPE,
+                S10.S10_RESULTAT,
+                COUNT(*) AS ANTALL
+            FROM SA_SAK_10 S10
+            WHERE
+                S10.S10_KAPITTELNR    = 'HJ'
+                AND TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') <= TO_DATE(:maksDato, 'DDMMYYYY')
+                AND TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') >= TO_DATE(:minDato, 'DDMMYYYY')
+                AND S10.S10_RESULTAT <> '  '
+            GROUP BY S10.S10_BEHEN_ENHET, TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+            ORDER BY S10.S10_BEHEN_ENHET, TO_DATE(LPAD(S10.S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY'), S10.S10_VALG, S10.S10_UNDERVALG, S10.S10_TYPE, S10.S10_RESULTAT
+        """.trimIndent(),
+        mapOf(
+            "maksDato" to maksVedtaksdato,
+            "minDato" to minVedtaksdato,
+        ).tilInfotrygdformat(),
+    ) { row ->
+        mapOf(
+            "enhet" to row.string("S10_BEHEN_ENHET"),
+            "dato" to row.localDate("DATO"),
+            "valg" to row.string("S10_VALG"),
+            "undervalg" to row.string("S10_UNDERVALG"),
+            "type" to row.string("S10_TYPE"),
+            "resultat" to row.string("S10_RESULTAT"),
+            "antall" to row.int("ANTALL"),
+        )
     }
 
     fun hentSakerForBruker(fnr: Fødselsnummer): List<HentSakerForBrukerResponse> {

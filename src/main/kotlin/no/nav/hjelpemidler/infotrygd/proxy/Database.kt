@@ -1,24 +1,24 @@
 package no.nav.hjelpemidler.infotrygd.proxy
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import no.nav.hjelpemidler.configuration.Environment
 import no.nav.hjelpemidler.configuration.TestEnvironment
 import no.nav.hjelpemidler.database.JdbcOperations
-import no.nav.hjelpemidler.database.transactionAsync
-import no.nav.hjelpemidler.database.withDatabaseContext
 import java.io.Closeable
 import javax.sql.DataSource
 
 private val log = KotlinLogging.logger {}
 
 class Database(private val dataSource: DataSource) : Closeable {
-    suspend fun isValid(): Boolean = withDatabaseContext {
+    suspend fun isValid(): Boolean = withContext(Dispatchers.IO) {
         dataSource.connection.use {
             it.isValid(10)
         }
     }
 
-    suspend fun <T> transaction(block: DaoProvider.() -> T): T = transactionAsync(dataSource, strict = true) {
+    suspend fun <T> transaction(block: DaoProvider.() -> T): T = no.nav.hjelpemidler.database.transaction(dataSource, strict = true) {
         DaoProvider(it).block()
     }
 

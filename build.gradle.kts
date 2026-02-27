@@ -5,33 +5,30 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlin.stdlib)
     implementation(libs.micrometer.registry.prometheus)
-    implementation(libs.hm.core)
-
-    // Logging
-    implementation(libs.kotlin.logging)
-    runtimeOnly(libs.bundles.logging.runtime)
-
-    // Jackson
-    implementation(libs.bundles.jackson)
 
     // Ktor Server
     implementation(libs.bundles.ktor.server)
 
-    // Database
-    implementation(libs.hm.database)
-    implementation(libs.hm.database) {
+    // hotlibs
+    implementation(platform(libs.hotlibs.platform))
+    implementation(libs.hotlibs.core)
+    implementation(libs.hotlibs.logging)
+    implementation(libs.hotlibs.serialization)
+
+    // hotlibs/database
+    implementation(libs.hotlibs.database)
+    implementation(libs.hotlibs.database) {
         capabilities {
-            requireCapability("no.nav.hjelpemidler:hm-database-oracle")
+            requireCapability("no.nav.hjelpemidler:database-oracle")
         }
     }
 
     // Test
-    testImplementation(libs.bundles.test)
-    testImplementation(libs.hm.database) {
+    testImplementation(libs.hotlibs.test)
+    testImplementation(libs.hotlibs.database) {
         capabilities {
-            requireCapability("no.nav.hjelpemidler:hm-database-h2")
+            requireCapability("no.nav.hjelpemidler:database-h2")
         }
     }
 }
@@ -53,10 +50,37 @@ spotless {
     }
 }
 
-application { mainClass.set("no.nav.hjelpemidler.infotrygd.proxy.ApplicationKt") }
-kotlin { jvmToolchain(21) }
+application {
+    mainClass.set("no.nav.hjelpemidler.infotrygd.proxy.ApplicationKt")
+}
 
-tasks.test {
-    environment("NAIS_CLUSTER_NAME", "test")
-    useJUnitPlatform()
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
+    }
+}
+
+testing {
+    @Suppress("UnstableApiUsage")
+    suites {
+        val test by getting(JvmTestSuite::class) {
+            useKotlinTest(libs.versions.kotlin.asProvider())
+            targets.all {
+                testTask {
+                    environment("NAIS_CLUSTER_NAME", "test")
+                }
+            }
+        }
+    }
+}
+
+tasks.shadowJar {
+    mergeServiceFiles()
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }

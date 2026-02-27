@@ -7,12 +7,11 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
-import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.auth.authenticate
 import io.ktor.server.metrics.micrometer.MicrometerMetrics
 import io.ktor.server.netty.EngineMain
-import io.ktor.server.plugins.callloging.CallLogging
+import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.path
 import io.ktor.server.request.receive
@@ -61,7 +60,7 @@ fun Application.module() {
         schema = Configuration.HM_INFOTRYGD_PROXY_DB_NAME
         connectionInitSql = """ALTER SESSION SET CURRENT_SCHEMA = $schema"""
     }.let(::Database)
-    environment.monitor.subscribe(ApplicationStopping) {
+    monitor.subscribe(ApplicationStopping) {
         database.close()
     }
 
@@ -105,8 +104,10 @@ fun Application.module() {
                     val maksVedtaksdato: LocalDate,
                     val pker: List<InfotrygdPrimaryKey>,
                 )
+
                 val req = call.receive<Request>()
-                val response = infotrygdService.hentBrevstatistikk(req.enheter, req.minVedtaksdato, req.maksVedtaksdato, req.pker)
+                val response =
+                    infotrygdService.hentBrevstatistikk(req.enheter, req.minVedtaksdato, req.maksVedtaksdato, req.pker)
                 call.respond(response)
             }
 
@@ -115,6 +116,7 @@ fun Application.module() {
                     val minVedtaksdato: LocalDate,
                     val maksVedtaksdato: LocalDate,
                 )
+
                 val req = call.receive<Request>()
                 val response = infotrygdService.hentVedtaksstatistikk(req.minVedtaksdato, req.maksVedtaksdato)
                 call.respond(response)

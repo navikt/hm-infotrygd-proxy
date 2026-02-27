@@ -1,6 +1,6 @@
 package no.nav.hjelpemidler.infotrygd.proxy
 
-import kotliquery.Row
+import no.nav.hjelpemidler.database.Row
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
