@@ -145,20 +145,30 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         ).tilInfotrygdformat(),
     ) { true } == true
 
-    fun harVedtakOmHøreapparat(fnr: Fødselsnummer): Boolean = tx.singleOrNull(
-        """
-            SELECT 1
+    fun harVedtakOmHøreapparat(fnr: Fødselsnummer): HarVedtakOmHøreapparatResponse =
+        tx.singleOrNull(
+            """
+            SELECT S10_VEDTAKSDATO
             FROM SA_SAK_10
             WHERE F_NR = :fnr
               AND S10_VALG = 'HØ'
               AND (S10_UNDERVALG = 'DA' OR S10_UNDERVALG = 'UL') -- DA og UL er begge Dagliglivet
               AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+            ORDER BY S10_VEDTAKSDATO DESC
             FETCH FIRST 1 ROWS ONLY
-        """.trimIndent(),
-        mapOf(
-            "fnr" to fnr,
-        ).tilInfotrygdformat(),
-    ) { true } == true
+            """.trimIndent(),
+            mapOf(
+                "fnr" to fnr,
+            ).tilInfotrygdformat(),
+        ) { row ->
+            HarVedtakOmHøreapparatResponse(
+                vedtaksdato = row.infotrygdDateOrNull("S10_VEDTAKSDATO"),
+                harVedtak = true,
+            )
+        } ?: HarVedtakOmHøreapparatResponse(
+            vedtaksdato = null,
+            harVedtak = false,
+        )
 
     fun harVedtakFraFør(fnr: Fødselsnummer): Boolean = tx.singleOrNull(
         """

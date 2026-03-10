@@ -92,7 +92,8 @@ data class HarVedtakOmHøreapparatRequest(
 )
 
 data class HarVedtakOmHøreapparatResponse(
-    var resultat: Boolean,
+    var vedtaksdato: LocalDate?,
+    var harVedtak: Boolean,
 )
 
 data class HarVedtakFraFørRequest(
