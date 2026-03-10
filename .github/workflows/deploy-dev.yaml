@@ -9,7 +9,7 @@ on:
       - "CODEOWNERS"
     branches:
       - main
-
+      - harvedtakforha
 jobs:
   build:
     name: Bygg, deploy til dev-fss og lag release
