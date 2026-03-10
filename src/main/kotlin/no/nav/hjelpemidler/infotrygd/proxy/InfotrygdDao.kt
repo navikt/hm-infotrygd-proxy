@@ -148,7 +148,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
     fun harVedtakOmHøreapparat(fnr: Fødselsnummer): HarVedtakOmHøreapparatResponse =
         tx.singleOrNull(
             """
-            SELECT S10_VEDTAKSDATO
+            SELECT TO_DATE(LPAD(S10_VEDTAKSDATO, 8, '0') DEFAULT '01011900' ON CONVERSION ERROR, 'DDMMYYYY') AS S10_VEDTAKSDATO
             FROM SA_SAK_10
             WHERE F_NR = :fnr
               AND S10_VALG = 'HØ'
@@ -162,7 +162,7 @@ class InfotrygdDao(private val tx: JdbcOperations) {
             ).tilInfotrygdformat(),
         ) { row ->
             HarVedtakOmHøreapparatResponse(
-                vedtaksdato = row.infotrygdDateOrNull("S10_VEDTAKSDATO"),
+                vedtaksdato = row.localDateOrNull("S10_VEDTAKSDATO"),
                 harVedtak = true,
             )
         } ?: HarVedtakOmHøreapparatResponse(
