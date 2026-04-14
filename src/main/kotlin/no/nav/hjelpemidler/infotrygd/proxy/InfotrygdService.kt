@@ -31,12 +31,9 @@ class InfotrygdService(private val database: Database) {
 
     suspend fun harVedtakOmHøreapparat(request: HarVedtakOmHøreapparatRequest): HarVedtakOmHøreapparatResponse {
         log.info { "Sjekker om bruker har vedtak om høreapparat" }
-        return database.transaction {
-            val resultat = infotrygdDao.harVedtakOmHøreapparat(
-                request.fnr,
-            )
-            HarVedtakOmHøreapparatResponse(resultat)
-        }
+        val response = database.transaction { infotrygdDao.harVedtakOmHøreapparat(request.fnr) }
+        log.info { "Sjekk etter vedtak om høreapparat fullført." }
+        return response
     }
 
     suspend fun harVedtakFraFør(fnr: Fødselsnummer): HarVedtakFraFørResponse {

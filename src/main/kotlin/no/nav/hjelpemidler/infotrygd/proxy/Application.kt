@@ -87,7 +87,11 @@ fun Application.module() {
             post("/har-vedtak-om-ha") {
                 val request = call.receive<HarVedtakOmHøreapparatRequest>()
                 val response = infotrygdService.harVedtakOmHøreapparat(request)
-                if (Environment.current.tier.isDev) response.resultat = true
+                if (Environment.current.tier.isDev) {
+                    response.harVedtak = true
+                    response.vedtaksdato = LocalDate.now()
+                }
+
                 call.respond(response)
             }
 
