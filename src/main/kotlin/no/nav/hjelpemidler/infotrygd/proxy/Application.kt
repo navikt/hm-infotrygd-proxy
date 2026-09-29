@@ -69,6 +69,8 @@ fun Application.module() {
 
         authenticate("aad") {
             post("/vedtak-resultat") {
+                // FIXME: Avklar om vi skal sende varsler på de gamle vedtakene her...
+                throw RuntimeException("Slått av midlertidig mens vi avklarer hva vi gjør med stoppen her")
                 // fixme -> eksisterende løsning støtter at noen av requestene er ugyldige og svarer med en response for disse, trenger vi faktisk det?
                 val requests = call.receive<List<VedtaksresultatRequest>>()
                 val response = infotrygdService.hentVedtaksresultat(requests)
