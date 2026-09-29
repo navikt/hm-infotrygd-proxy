@@ -1,10 +1,9 @@
 package no.nav.hjelpemidler.infotrygd.proxy
 
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.serialization.jackson.jackson
+import io.ktor.http.ContentType
+import io.ktor.serialization.jackson3.JacksonConverter
+import io.ktor.serialization.jackson3.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.install
@@ -22,6 +21,7 @@ import no.nav.hjelpemidler.configuration.Environment
 import no.nav.hjelpemidler.database.Oracle
 import no.nav.hjelpemidler.database.createDataSource
 import no.nav.hjelpemidler.infotrygd.proxy.domain.InfotrygdPrimaryKey
+import no.nav.hjelpemidler.serialization.jackson.jsonMapper
 import org.slf4j.event.Level
 import java.time.LocalDate
 
@@ -35,13 +35,11 @@ fun main(args: Array<String>) = EngineMain.main(args)
 @Suppress("unused")
 fun Application.module() {
     installAuthentication()
+
     install(ContentNegotiation) {
-        jackson {
-            registerModule(JavaTimeModule())
-            disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-            disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-        }
+        register(ContentType.Application.Json, JacksonConverter(jsonMapper))
     }
+
     install(CallLogging) {
         level = Level.TRACE
         filter { call ->

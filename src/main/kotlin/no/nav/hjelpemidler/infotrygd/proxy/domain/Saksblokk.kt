@@ -1,8 +1,8 @@
 package no.nav.hjelpemidler.infotrygd.proxy.domain
 
 import com.fasterxml.jackson.annotation.JsonValue
+import no.nav.hjelpemidler.core.ValueType
 import no.nav.hjelpemidler.database.Row
-import no.nav.hjelpemidler.domain.ValueType
 
 data class Saksblokk(@JsonValue override val value: String) : ValueType<String> {
     init {
