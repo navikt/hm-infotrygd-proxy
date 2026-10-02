@@ -29,11 +29,19 @@ class InfotrygdService(private val database: Database) {
         }
     }
 
-    suspend fun harVedtakOmHøreapparat(request: HarVedtakOmHøreapparatRequest): HarVedtakOmHøreapparatResponse {
+    suspend fun harVedtakOmHøreapparat(request: FnrRequest): HarVedtakOmHøreapparatResponse {
         log.info { "Sjekker om bruker har vedtak om høreapparat" }
         val response = database.transaction { infotrygdDao.harVedtakOmHøreapparat(request.fnr) }
         log.info { "Sjekk etter vedtak om høreapparat fullført." }
         return response
+    }
+
+    suspend fun hentVedtakOmTilskuddTilRimeligeHjelpemidler(fnr: Fødselsnummer): VedtakOmRimeligeHjelpemidlerResponse {
+        log.info { "Henter siste vedtak om rimelige hjelpemidler for person." }
+        return database.transaction {
+            val vedtaksdato = infotrygdDao.sisteVedtakOmTilskuddTilRimeligeHjelpemidler(fnr)
+            VedtakOmRimeligeHjelpemidlerResponse(vedtaksdato)
+        }
     }
 
     suspend fun harVedtakFraFør(fnr: Fødselsnummer): HarVedtakFraFørResponse {

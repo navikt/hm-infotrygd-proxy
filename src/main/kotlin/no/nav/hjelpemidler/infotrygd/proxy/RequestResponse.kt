@@ -87,7 +87,7 @@ data class HarVedtakForResponse(
     var resultat: Boolean,
 )
 
-data class HarVedtakOmHøreapparatRequest(
+data class FnrRequest(
     val fnr: Fødselsnummer,
 )
 
@@ -96,16 +96,12 @@ data class HarVedtakOmHøreapparatResponse(
     var harVedtak: Boolean,
 )
 
-data class HarVedtakFraFørRequest(
-    val fnr: Fødselsnummer,
+data class VedtakOmRimeligeHjelpemidlerResponse(
+    val vedtaksdato: LocalDate?,
 )
 
 data class HarVedtakFraFørResponse(
     val harVedtakFraFør: Boolean,
-)
-
-data class HentSakerForBrukerRequest(
-    val fnr: Fødselsnummer,
 )
 
 data class HentSakerForBrukerResponse(

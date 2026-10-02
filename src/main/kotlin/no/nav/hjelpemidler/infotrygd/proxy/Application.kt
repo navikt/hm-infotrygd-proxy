@@ -3,7 +3,6 @@ package no.nav.hjelpemidler.infotrygd.proxy
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.http.ContentType
 import io.ktor.serialization.jackson3.JacksonConverter
-import io.ktor.serialization.jackson3.jackson
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.install
@@ -85,7 +84,7 @@ fun Application.module() {
             }
 
             post("/har-vedtak-om-ha") {
-                val request = call.receive<HarVedtakOmHøreapparatRequest>()
+                val request = call.receive<FnrRequest>()
                 val response = infotrygdService.harVedtakOmHøreapparat(request)
                 if (Environment.current.tier.isDev) {
                     response.harVedtak = true
@@ -95,8 +94,14 @@ fun Application.module() {
                 call.respond(response)
             }
 
+            post("/vedtak-tilskudd-rimelige-hjelpemidler") {
+                val request = call.receive<FnrRequest>()
+                val response = infotrygdService.hentVedtakOmTilskuddTilRimeligeHjelpemidler(request.fnr)
+                call.respond(response)
+            }
+
             post("/har-vedtak-fra-for") {
-                val request = call.receive<HarVedtakFraFørRequest>()
+                val request = call.receive<FnrRequest>()
                 val response = infotrygdService.harVedtakFraFør(request.fnr)
                 call.respond(response)
             }
@@ -128,7 +133,7 @@ fun Application.module() {
 
             // fixme -> slett denne, ser ikke ut som den er i bruk
             post("/hent-saker-for-bruker") {
-                val request = call.receive<HentSakerForBrukerRequest>()
+                val request = call.receive<FnrRequest>()
                 val response = infotrygdService.hentSakerForBruker(request.fnr)
                 call.respond(response)
             }

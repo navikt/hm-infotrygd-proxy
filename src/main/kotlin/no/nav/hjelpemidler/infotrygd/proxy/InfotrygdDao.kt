@@ -169,6 +169,24 @@ class InfotrygdDao(private val tx: JdbcOperations) {
         harVedtak = false,
     )
 
+    fun sisteVedtakOmTilskuddTilRimeligeHjelpemidler(fnr: Fødselsnummer): LocalDate? = tx.singleOrNull(
+        """
+            SELECT S10_VEDTAKSDATO
+             FROM SA_SAK_10
+             WHERE F_NR = :fnr
+                 AND S10_VALG = 'DA'
+                 AND S10_UNDERVALG = 'SH'
+                 AND (DB_SPLITT = 'HJ' OR DB_SPLITT = '99')
+             ORDER BY TO_DATE(LPAD(S10_VEDTAKSDATO,8, '0') DEFAULT '01011900' ON CONVERSION ERROR,'DDMMYYYY') DESC
+             FETCH FIRST 1 ROWS ONLY
+        """.trimIndent(),
+        mapOf(
+            "fnr" to fnr,
+        ).tilInfotrygdformat(),
+    ) { row ->
+        row.infotrygdDateOrNull("S10_VEDTAKSDATO")
+    }
+
     fun harVedtakFraFør(fnr: Fødselsnummer): Boolean = tx.singleOrNull(
         """
             SELECT 1
